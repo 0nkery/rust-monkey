@@ -18,7 +18,7 @@ impl Lexer {
             input: input,
             position: 0,
             read_position: 0,
-            ch: '\\',
+            ch: '\0',
         };
         l.read_char();
         l
@@ -26,7 +26,7 @@ impl Lexer {
 
     fn read_char(&mut self) {
         if self.read_position >= self.input.len() {
-            self.ch = '\\';
+            self.ch = '\0';
         } else {
             self.ch = self.input.chars().nth(self.read_position).unwrap();
         }
@@ -34,23 +34,56 @@ impl Lexer {
         self.read_position += 1;
     }
 
+    fn is_letter(&self, ch: char) -> bool {
+        ch.is_alphabetic() || ch == '_' || ch == '?'
+    }
+
+    fn read_ident(&mut self) -> String {
+        let position = self.position;
+        while self.is_letter(self.ch) {
+            self.read_char();
+        }
+
+        self.input[position..self.position].to_string()
+    }
+
+    fn read_number(&mut self) -> String {
+        let position = self.position;
+        while self.ch.is_digit(10) {
+            self.read_char();
+        }
+
+        self.input[position..self.position].to_string()
+    }
+
     fn next_token(&mut self) -> Token {
-        let tt = match self.ch {
-            '=' => TokenType::Assign,
-            ';' => TokenType::Semicolon,
-            '(' => TokenType::LeftParen,
-            ')' => TokenType::RightParen,
-            ',' => TokenType::Comma,
-            '+' => TokenType::Plus,
-            '{' => TokenType::LeftBrace,
-            '}' => TokenType::RightBrace,
-            '\\' => TokenType::EOF,
-            _ => TokenType::Illegal,
+        while self.ch.is_whitespace() {
+            self.read_char();
+        }
+
+        let tok = match self.ch {
+            '=' => Token::new(TokenType::Assign, self.ch.to_string()),
+            ';' => Token::new(TokenType::Semicolon, self.ch.to_string()),
+            '(' => Token::new(TokenType::LeftParen, self.ch.to_string()),
+            ')' => Token::new(TokenType::RightParen, self.ch.to_string()),
+            ',' => Token::new(TokenType::Comma, self.ch.to_string()),
+            '+' => Token::new(TokenType::Plus, self.ch.to_string()),
+            '{' => Token::new(TokenType::LeftBrace, self.ch.to_string()),
+            '}' => Token::new(TokenType::RightBrace, self.ch.to_string()),
+            '\0' => Token::new(TokenType::EOF, "".to_string()),
+            ch @ _ if self.is_letter(ch) => {
+                let ident = self.read_ident();
+                let tt = TokenType::lookup_ident(&ident);
+                return Token::new(tt, ident);
+            }
+            ch @ _ if ch.is_digit(10) => {
+                let literal = self.read_number();
+                return Token::new(TokenType::Int, literal);
+            }
+            _ => Token::new(TokenType::Illegal, self.ch.to_string()),
         };
-        let tok = Token::new(tt, self.ch.to_string());
 
         self.read_char();
-
         tok
     }
 }
@@ -105,16 +138,18 @@ fn test_next_token() {
                      (TokenType::Semicolon, ";"),
                      (TokenType::EOF, "")];
 
-    for (expected_type, expected_literal) in tests {
+    for (i, &(ref expected_type, ref expected_literal)) in tests.iter().enumerate() {
         let tok = lexer.next_token();
 
-        assert!(tok.token_type == expected_type,
-                "Wrong TokenType. Expected - {:?}, got - {:?}.",
+        assert!(tok.token_type == *expected_type,
+                "Wrong TokenType [{}]. Expected - {:?}, got - {:?}.",
+                i,
                 expected_type,
                 tok.token_type);
 
-        assert!(tok.literal == expected_literal,
-                "Wrong literal. Expected - {:?}, got - {:?}.",
+        assert!(tok.literal == *expected_literal,
+                "Wrong literal [{}]. Expected - {:?}, got - {:?}.",
+                i,
                 expected_literal,
                 tok.literal);
     }
