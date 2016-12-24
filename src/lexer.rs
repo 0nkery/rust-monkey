@@ -2,7 +2,7 @@ use super::token::TokenType;
 use super::token::Token;
 
 
-struct Lexer {
+pub struct Lexer {
     input: String,
     // Current position in input.
     position: usize,
@@ -12,13 +12,15 @@ struct Lexer {
     ch: char,
 }
 
+const EOF: char = '\0';
+
 impl Lexer {
-    fn new(input: String) -> Self {
+    pub fn new(input: String) -> Self {
         let mut l = Lexer {
             input: input,
             position: 0,
             read_position: 0,
-            ch: '\0',
+            ch: EOF,
         };
         l.read_char();
         l
@@ -26,7 +28,7 @@ impl Lexer {
 
     fn read_char(&mut self) {
         if self.read_position >= self.input.len() {
-            self.ch = '\0';
+            self.ch = EOF;
         } else {
             self.ch = self.input.chars().nth(self.read_position).unwrap();
         }
@@ -36,7 +38,7 @@ impl Lexer {
 
     fn peek_char(&mut self) -> char {
         if self.read_position >= self.input.len() {
-            return '\0';
+            return EOF;
         } else {
             return self.input.chars().nth(self.read_position).unwrap();
         }
@@ -64,7 +66,7 @@ impl Lexer {
         self.input[position..self.position].to_string()
     }
 
-    fn next_token(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Token {
         while self.ch.is_whitespace() {
             self.read_char();
         }
@@ -98,7 +100,7 @@ impl Lexer {
             '*' => Token::new(TokenType::Asterisk, self.ch.to_string()),
             '<' => Token::new(TokenType::LessThan, self.ch.to_string()),
             '>' => Token::new(TokenType::GreaterThan, self.ch.to_string()),
-            '\0' => Token::new(TokenType::EOF, "".to_string()),
+            EOF => Token::new(TokenType::EOF, "".to_string()),
             ch @ _ if self.is_letter(ch) => {
                 let ident = self.read_ident();
                 let tt = TokenType::lookup_ident(&ident);
