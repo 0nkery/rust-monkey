@@ -70,6 +70,12 @@ impl Lexer {
             '+' => Token::new(TokenType::Plus, self.ch.to_string()),
             '{' => Token::new(TokenType::LeftBrace, self.ch.to_string()),
             '}' => Token::new(TokenType::RightBrace, self.ch.to_string()),
+            '!' => Token::new(TokenType::Bang, self.ch.to_string()),
+            '-' => Token::new(TokenType::Minus, self.ch.to_string()),
+            '/' => Token::new(TokenType::Slash, self.ch.to_string()),
+            '*' => Token::new(TokenType::Asterisk, self.ch.to_string()),
+            '<' => Token::new(TokenType::LessThan, self.ch.to_string()),
+            '>' => Token::new(TokenType::GreaterThan, self.ch.to_string()),
             '\0' => Token::new(TokenType::EOF, "".to_string()),
             ch @ _ if self.is_letter(ch) => {
                 let ident = self.read_ident();
@@ -97,6 +103,14 @@ fn test_next_token() {
             x + y;
         };
         let result = add(five, ten);
+        !-/*5;
+        5 < 10 > 5;
+
+        if (5 < 10) {
+            return true;
+        } else {
+            return false;
+        }
     ");
     let mut lexer = Lexer::new(input);
 
@@ -136,6 +150,35 @@ fn test_next_token() {
                      (TokenType::Ident, "ten"),
                      (TokenType::RightParen, ")"),
                      (TokenType::Semicolon, ";"),
+                     (TokenType::Bang, "!"),
+                     (TokenType::Minus, "-"),
+                     (TokenType::Slash, "/"),
+                     (TokenType::Asterisk, "*"),
+                     (TokenType::Int, "5"),
+                     (TokenType::Semicolon, ";"),
+                     (TokenType::Int, "5"),
+                     (TokenType::LessThan, "<"),
+                     (TokenType::Int, "10"),
+                     (TokenType::GreaterThan, ">"),
+                     (TokenType::Int, "5"),
+                     (TokenType::Semicolon, ";"),
+                     (TokenType::If, "if"),
+                     (TokenType::LeftParen, "("),
+                     (TokenType::Int, "5"),
+                     (TokenType::LessThan, "<"),
+                     (TokenType::Int, "10"),
+                     (TokenType::RightParen, ")"),
+                     (TokenType::LeftBrace, "{"),
+                     (TokenType::Return, "return"),
+                     (TokenType::True, "true"),
+                     (TokenType::Semicolon, ";"),
+                     (TokenType::RightBrace, "}"),
+                     (TokenType::Else, "else"),
+                     (TokenType::LeftBrace, "{"),
+                     (TokenType::Return, "return"),
+                     (TokenType::False, "false"),
+                     (TokenType::Semicolon, ";"),
+                     (TokenType::RightBrace, "}"),
                      (TokenType::EOF, "")];
 
     for (i, &(ref expected_type, ref expected_literal)) in tests.iter().enumerate() {
