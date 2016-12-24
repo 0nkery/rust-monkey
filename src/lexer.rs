@@ -34,6 +34,14 @@ impl Lexer {
         self.read_position += 1;
     }
 
+    fn peek_char(&mut self) -> char {
+        if self.read_position >= self.input.len() {
+            return '\0';
+        } else {
+            return self.input.chars().nth(self.read_position).unwrap();
+        }
+    }
+
     fn is_letter(&self, ch: char) -> bool {
         ch.is_alphabetic() || ch == '_' || ch == '?'
     }
@@ -62,7 +70,14 @@ impl Lexer {
         }
 
         let tok = match self.ch {
-            '=' => Token::new(TokenType::Assign, self.ch.to_string()),
+            '=' => {
+                if self.peek_char() == '=' {
+                    self.read_char();
+                    Token::new(TokenType::Eq, "==".to_string())
+                } else {
+                    Token::new(TokenType::Assign, self.ch.to_string())
+                }
+            }
             ';' => Token::new(TokenType::Semicolon, self.ch.to_string()),
             '(' => Token::new(TokenType::LeftParen, self.ch.to_string()),
             ')' => Token::new(TokenType::RightParen, self.ch.to_string()),
@@ -70,7 +85,14 @@ impl Lexer {
             '+' => Token::new(TokenType::Plus, self.ch.to_string()),
             '{' => Token::new(TokenType::LeftBrace, self.ch.to_string()),
             '}' => Token::new(TokenType::RightBrace, self.ch.to_string()),
-            '!' => Token::new(TokenType::Bang, self.ch.to_string()),
+            '!' => {
+                if self.peek_char() == '=' {
+                    self.read_char();
+                    Token::new(TokenType::NotEq, "!=".to_string())
+                } else {
+                    Token::new(TokenType::Bang, self.ch.to_string())
+                }
+            }
             '-' => Token::new(TokenType::Minus, self.ch.to_string()),
             '/' => Token::new(TokenType::Slash, self.ch.to_string()),
             '*' => Token::new(TokenType::Asterisk, self.ch.to_string()),
@@ -111,6 +133,9 @@ fn test_next_token() {
         } else {
             return false;
         }
+
+        10 == 10;
+        10 != 9;
     ");
     let mut lexer = Lexer::new(input);
 
@@ -179,6 +204,14 @@ fn test_next_token() {
                      (TokenType::False, "false"),
                      (TokenType::Semicolon, ";"),
                      (TokenType::RightBrace, "}"),
+                     (TokenType::Int, "10"),
+                     (TokenType::Eq, "=="),
+                     (TokenType::Int, "10"),
+                     (TokenType::Semicolon, ";"),
+                     (TokenType::Int, "10"),
+                     (TokenType::NotEq, "!="),
+                     (TokenType::Int, "9"),
+                     (TokenType::Semicolon, ";"),
                      (TokenType::EOF, "")];
 
     for (i, &(ref expected_type, ref expected_literal)) in tests.iter().enumerate() {
