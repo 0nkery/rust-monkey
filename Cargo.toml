@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Dmitry Shlagoff <wessmoke@gmail.com>"]
 
 [dependencies]
+users = "0.5.0"
