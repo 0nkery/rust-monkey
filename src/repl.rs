@@ -9,7 +9,7 @@ use super::token::TokenType;
 const PROMPT: &'static str = ">> ";
 
 
-pub fn start(mut in_: Stdin, mut out: Stdout) {
+pub fn start(in_: Stdin, mut out: Stdout) {
     loop {
         print!("{}", PROMPT);
         out.flush().unwrap();
