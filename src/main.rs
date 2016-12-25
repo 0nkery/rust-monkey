@@ -3,6 +3,7 @@ extern crate users;
 mod token;
 mod lexer;
 mod repl;
+mod ast;
 
 use std::io::stdin;
 use std::io::stdout;
