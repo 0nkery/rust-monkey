@@ -1,4 +1,5 @@
-use std::io::Read;
+use std::io::Stdin;
+use std::io::Stdout;
 use std::io::Write;
 
 use super::lexer::Lexer;
@@ -8,16 +9,13 @@ use super::token::TokenType;
 const PROMPT: &'static str = ">> ";
 
 
-pub fn start<R, W>(mut in_: R, mut out: W)
-    where R: Read,
-          W: Write
-{
+pub fn start(mut in_: Stdin, mut out: Stdout) {
     loop {
         print!("{}", PROMPT);
         out.flush().unwrap();
 
         let mut s = String::new();
-        in_.read_to_string(&mut s).expect("Did not enter a correct string");
+        in_.read_line(&mut s).expect("Did not enter a correct string");
 
         let mut l = Lexer::new(s);
         let mut tok = l.next_token();
