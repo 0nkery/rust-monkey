@@ -35,6 +35,7 @@ impl<'a> Parser<'a> {
     fn parse_stmt(&mut self) -> Option<Statement> {
         match self.cur_token.token_type {
             TokenType::Let => self.parse_let_stmt(),
+            TokenType::Return => self.parse_return_stmt(),
             _ => None,
         }
     }
@@ -59,6 +60,21 @@ impl<'a> Parser<'a> {
         Some(Statement::Let {
             token: let_token,
             name: name,
+            value: unsafe { ::std::mem::uninitialized() },
+        })
+    }
+
+    fn parse_return_stmt(&mut self) -> Option<Statement> {
+        let return_token = self.cur_token.clone();
+
+        self.next_token();
+
+        while self.cur_token.token_type != TokenType::Semicolon {
+            self.next_token();
+        }
+
+        Some(Statement::Return {
+            token: return_token,
             value: unsafe { ::std::mem::uninitialized() },
         })
     }
@@ -95,6 +111,18 @@ impl<'a> Parser<'a> {
     }
 }
 
+
+#[cfg(test)]
+fn check_parser_errors<'a>(parser: &'a Parser) {
+    if parser.errors.len() == 0 {
+        return;
+    }
+
+    for err in &parser.errors {
+        println!("{}", err);
+    }
+    panic!("There are parser errors!");
+}
 
 #[test]
 fn test_let_statements() {
@@ -133,19 +161,37 @@ let foobar = 838383;
                     expected,
                     name);
         } else {
-            panic!("stmt is not Statement::Let");
+            panic!("stmt is not Statement::Let. Got {:?}", stmt);
         }
     }
 }
 
-#[cfg(test)]
-fn check_parser_errors<'a>(parser: &'a Parser) {
-    if parser.errors.len() == 0 {
-        return;
+#[test]
+fn test_return_statements() {
+    let input = String::from("
+return 5;
+return 10;
+return 993322;
+    ");
+
+    let mut l = Lexer::new(input);
+    let mut p = Parser::new(&mut l);
+
+    let program = p.parse_program();
+    check_parser_errors(&p);
+
+    assert!(program.statements.len() == 3,
+            "program.statements does not contain 3 statements. Got {}",
+            program.statements.len());
+
+    for stmt in program.statements {
+        if let Statement::Return { .. } = stmt {
+            assert!(stmt.token_literal() == "return",
+                    "stmt.token_literal() isn't 'return'. Got {}",
+                    stmt.token_literal());
+        } else {
+            panic!("stmt is not Statement::Return. Got {:?}", stmt);
+        }
     }
 
-    for err in &parser.errors {
-        println!("{}", err);
-    }
-    panic!("There are parser errors!");
 }

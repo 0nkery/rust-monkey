@@ -4,24 +4,29 @@ pub trait Node<'a> {
     fn token_literal(&'a self) -> &'a str;
 }
 
+#[derive(Debug)]
 pub enum Statement {
     Let {
         token: Token,
         name: Identifier,
         value: Expression,
     },
-    Empty,
+    Return {
+        token: Token,
+        value: Expression,
+    },
 }
 
 impl<'a> Node<'a> for Statement {
     fn token_literal(&self) -> &str {
         match *self {
             Statement::Let { ref token, .. } => &token.literal,
-            ref Empty => "",
+            Statement::Return { ref token, .. } => &token.literal,
         }
     }
 }
 
+#[derive(Debug)]
 pub enum Expression {}
 
 pub struct Program {
