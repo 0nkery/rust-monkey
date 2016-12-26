@@ -400,3 +400,51 @@ fn test_parsing_prefix_expressions() {
         }
     }
 }
+
+#[test]
+fn test_parsing_infix_expressions() {
+    let tests = vec![
+        ("5 + 5;", 5, "+", 5),
+        ("5 - 5;", 5, "-", 5),
+        ("5 * 5;", 5, "*", 5),
+        ("5 / 5;", 5, "/", 5),
+        ("5 > 5;", 5, ">", 5),
+        ("5 < 5;", 5, "<", 5),
+        ("5 == 5;", 5, "==", 5),
+        ("5 != 5;", 5, "!=", 5)
+    ];
+
+    for (input, left_val, op, right_val) in tests {
+        let mut l = Lexer::new(input.to_string());
+        let mut p = Parser::new(&mut l);
+        let program = p.parse_program();
+        check_parser_errors(&p);
+
+        assert!(program.statements.len() == 1,
+                "program.statements does not contain 1 statement. Got {}",
+                program.statements.len());
+
+        if let Statement::Expression { ref expression, .. } = program.statements[0] {
+            if let Expression::Infix {
+                ref left,
+                ref operator,
+                ref right, ..
+            } = *expression {
+
+                check_integer_literal(left, left_val);
+                assert!(operator == op,
+                        "operator is not {}. Got {}",
+                        op,
+                        operator);
+                check_integer_literal(right, right_val);
+
+            } else {
+                panic!("expression is not Expression::Infix. Got {:?}",
+                       expression);
+            }
+        } else {
+            panic!("program.statements[0] is not Statement::Expression. Got {:?}",
+                   program.statements[0]);
+        }
+    }
+}

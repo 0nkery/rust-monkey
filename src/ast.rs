@@ -67,7 +67,13 @@ pub enum Expression {
     Prefix {
         token: Token,
         operator: String,
-        right: Box<Expression>
+        right: Box<Expression>,
+    },
+    Infix {
+        token: Token,
+        left: Box<Expression>,
+        operator: String,
+        right: Box<Expression>,
     }
 }
 
@@ -77,6 +83,7 @@ impl<'a> Node<'a> for Expression {
             Expression::Identifier { ref token, .. } => &token.literal,
             Expression::IntegerLiteral { ref token, .. } => &token.literal,
             Expression::Prefix { ref token, .. } => &token.literal,
+            Expression::Infix { ref token, .. } => &token.literal,
         }
     }
     fn string(&self) -> String {
@@ -85,6 +92,9 @@ impl<'a> Node<'a> for Expression {
             Expression::IntegerLiteral { ref token, .. } => token.literal.to_string(),
             Expression::Prefix { ref operator, ref right, .. } => {
                 format!("({}{})", operator, right.string())
+            },
+            Expression::Infix { ref left, ref operator, ref right, .. } => {
+                format!("({} {} {})", left.string(), operator, right.string())
             }
         }
     }
