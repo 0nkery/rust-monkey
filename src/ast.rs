@@ -47,7 +47,7 @@ impl<'a> Node<'a> for Statement {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Identifier {
         token: Token,

@@ -7,6 +7,7 @@ use super::ast::Statement;
 use super::ast::Expression;
 
 
+#[derive(PartialEq, PartialOrd)]
 enum Precedence {
     Lowest,
     Equals,
@@ -109,7 +110,18 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self, precedence: Precedence) -> Option<Expression> {
-        self.parse_prefix()
+        let left = self.parse_prefix();
+
+        if self.peek_token.token_type != TokenType::Semicolon &&
+           precedence < self.peek_precedence() {
+            self.next_token();
+            let expr = self.parse_infix_expr(left.clone().unwrap());
+            if expr.is_some() {
+                return expr;
+            }
+        }
+
+        left
     }
 
     fn parse_prefix(&mut self) -> Option<Expression> {
@@ -165,6 +177,48 @@ impl<'a> Parser<'a> {
             Some(Expression::Prefix {
                 token: token,
                 operator: operator,
+                right: Box::new(r),
+            })
+        } else {
+            None
+        }
+    }
+
+    fn precedence(&self, tt: &TokenType) -> Precedence {
+        match *tt {
+            TokenType::Eq => Precedence::Equals,
+            TokenType::NotEq => Precedence::Equals,
+            TokenType::LessThan => Precedence::LessGreater,
+            TokenType::GreaterThan => Precedence::LessGreater,
+            TokenType::Plus => Precedence::Sum,
+            TokenType::Minus => Precedence::Sum,
+            TokenType::Slash => Precedence::Product,
+            TokenType::Asterisk => Precedence::Product,
+            _ => Precedence::Lowest,
+        }
+    }
+
+    fn peek_precedence(&self) -> Precedence {
+        self.precedence(&self.peek_token.token_type)
+    }
+
+    fn cur_precedence(&self) -> Precedence {
+        self.precedence(&self.cur_token.token_type)
+    }
+
+    fn parse_infix_expr(&mut self, left: Expression) -> Option<Expression> {
+        let token = self.cur_token.clone();
+        let op = self.cur_token.literal.clone();
+
+        let precedence = self.cur_precedence();
+        self.next_token();
+        let right = self.parse_expr(precedence);
+
+        if let Some(r) = right {
+            Some(Expression::Infix {
+                token: token,
+                operator: op,
+                left: Box::new(left),
                 right: Box::new(r),
             })
         } else {
