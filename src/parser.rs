@@ -110,15 +110,18 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self, precedence: Precedence) -> Option<Expression> {
-        let left = self.parse_prefix();
+        let mut left = self.parse_prefix();
 
-        if self.peek_token.token_type != TokenType::Semicolon &&
-           precedence < self.peek_precedence() {
+        while self.peek_token.token_type != TokenType::Semicolon &&
+              precedence < self.peek_precedence() {
             self.next_token();
             let expr = self.parse_infix_expr(left.clone().unwrap());
-            if expr.is_some() {
-                return expr;
+
+            if expr.is_none() {
+                return left;
             }
+
+            left = expr;
         }
 
         left
