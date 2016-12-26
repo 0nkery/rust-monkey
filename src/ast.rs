@@ -19,8 +19,8 @@ pub enum Statement {
     },
     Expression {
         token: Token,
-        expression: Expression
-    }
+        expression: Expression,
+    },
 }
 
 impl<'a> Node<'a> for Statement {
@@ -35,19 +35,12 @@ impl<'a> Node<'a> for Statement {
     fn string(&self) -> String {
         let s = match *self {
             Statement::Let { ref name, ref value, .. } => {
-                format!("{} {} = {};",
-                        self.token_literal(),
-                        name.string(),
-                        value.string())
-            },
-            Statement::Return { ref value, .. } => {
-                format!("{} {};",
-                        self.token_literal(),
-                        value.string())
-            },
-            Statement::Expression { ref expression, .. } => {
-                format!("{}", expression.string())
+                format!("{} {} = {};", self.token_literal(), name.string(), value.string())
             }
+            Statement::Return { ref value, .. } => {
+                format!("{} {};", self.token_literal(), value.string())
+            }
+            Statement::Expression { ref expression, .. } => format!("{}", expression.string()),
         };
 
         s
@@ -62,7 +55,7 @@ pub enum Expression {
     },
     IntegerLiteral {
         token: Token,
-        value: i64
+        value: i64,
     },
     Prefix {
         token: Token,
@@ -74,7 +67,7 @@ pub enum Expression {
         left: Box<Expression>,
         operator: String,
         right: Box<Expression>,
-    }
+    },
 }
 
 impl<'a> Node<'a> for Expression {
@@ -92,7 +85,7 @@ impl<'a> Node<'a> for Expression {
             Expression::IntegerLiteral { ref token, .. } => token.literal.to_string(),
             Expression::Prefix { ref operator, ref right, .. } => {
                 format!("({}{})", operator, right.string())
-            },
+            }
             Expression::Infix { ref left, ref operator, ref right, .. } => {
                 format!("({} {} {})", left.string(), operator, right.string())
             }
@@ -134,19 +127,17 @@ impl<'a> Node<'a> for Program {
 #[test]
 fn test_string() {
     let program = Program {
-        statements: vec![
-            Statement::Let {
-                token: Token::new(TokenType::Let, "let".to_string()),
-                name: Expression::Identifier {
-                    token: Token::new(TokenType::Ident, "my_var".to_string()),
-                    value: "my_var".to_string()
-                },
-                value: Expression::Identifier {
-                    token: Token::new(TokenType::Ident, "another_var".to_string()),
-                    value: "another_var".to_string()
-                }
-            }
-        ]
+        statements: vec![Statement::Let {
+                             token: Token::new(TokenType::Let, "let".to_string()),
+                             name: Expression::Identifier {
+                                 token: Token::new(TokenType::Ident, "my_var".to_string()),
+                                 value: "my_var".to_string(),
+                             },
+                             value: Expression::Identifier {
+                                 token: Token::new(TokenType::Ident, "another_var".to_string()),
+                                 value: "another_var".to_string(),
+                             },
+                         }],
     };
 
     assert!(program.string() == "let my_var = another_var;",
