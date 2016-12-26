@@ -7,6 +7,17 @@ use super::ast::Statement;
 use super::ast::Expression;
 
 
+enum Precedence {
+    Lowest,
+    Equals,
+    LessGreater,
+    Sum,
+    Product,
+    Prefix,
+    Call
+}
+
+
 struct Parser<'a> {
     lexer: &'a mut Lexer,
     cur_token: Token,
@@ -36,7 +47,7 @@ impl<'a> Parser<'a> {
         match self.cur_token.token_type {
             TokenType::Let => self.parse_let_stmt(),
             TokenType::Return => self.parse_return_stmt(),
-            _ => None,
+            _ => self.parse_expr_stmt(),
         }
     }
 
@@ -82,6 +93,84 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn parse_expr_stmt(&mut self) -> Option<Statement> {
+        let expr_token = self.cur_token.clone();
+        let expr = self.parse_expr(Precedence::Lowest)
+                       .expect("Unable to parse expression");
+
+        if self.peek_token.token_type == TokenType::Semicolon {
+            self.next_token();
+        }
+
+        Some(Statement::Expression {
+            token: expr_token,
+            expression: expr
+        })
+    }
+
+    fn parse_expr(&mut self, precedence: Precedence) -> Option<Expression> {
+        self.parse_prefix()
+    }
+
+    fn parse_prefix(&mut self) -> Option<Expression> {
+        match self.cur_token.token_type {
+            TokenType::Ident => self.parse_identifier(),
+            TokenType::Int => self.parse_integer_literal(),
+            TokenType::Bang | TokenType::Minus => self.parse_prefix_expr(),
+            ref tt @ _ => {
+                let err_msg = format!("No prefix parse fn for {:?} found.", tt);
+                self.errors.push(err_msg);
+
+                None
+            }
+        }
+    }
+
+    fn parse_identifier(&self) -> Option<Expression> {
+        Some(Expression::Identifier {
+            token: self.cur_token.clone(),
+            value: self.cur_token.literal.clone()
+        })
+    }
+
+    fn parse_integer_literal(&mut self) -> Option<Expression> {
+        let literal_token = self.cur_token.clone();
+        let parse_result = self.cur_token.literal.parse();
+
+        match parse_result {
+            Ok(value) => Some(Expression::IntegerLiteral {
+                token: literal_token,
+                value: value
+            }),
+            Err(_) => {
+                let msg = format!("Could not parse {} as integer",
+                                  literal_token.literal);
+                self.errors.push(msg);
+
+                None
+            }
+        }
+    }
+
+    fn parse_prefix_expr(&mut self) -> Option<Expression> {
+        let token = self.cur_token.clone();
+        let operator = self.cur_token.literal.clone();
+
+        self.next_token();
+
+        let right = self.parse_expr(Precedence::Prefix);
+
+        if let Some(right) = right {
+            Some(Expression::Prefix {
+                token: token,
+                operator: operator,
+                right: Box::new(right)
+            })
+        } else {
+            None
+        }
+    }
+
     fn expect_peek(&mut self, tt: TokenType) -> bool {
         if self.peek_token.token_type == tt {
             self.next_token();
@@ -120,11 +209,27 @@ fn check_parser_errors<'a>(parser: &'a Parser) {
     if parser.errors.len() == 0 {
         return;
     }
-
     for err in &parser.errors {
         println!("{}", err);
     }
     panic!("There are parser errors!");
+}
+
+#[cfg(test)]
+fn check_integer_literal(il: &Expression, test_value: i64) {
+    match *il {
+        Expression::IntegerLiteral { ref value, .. } => {
+            assert!(*value == test_value,
+                    "il.value is not {}. Got {}",
+                    test_value,
+                    value);
+            assert!(il.token_literal() == test_value.to_string(),
+                    "il.token_literal() is not {}. Got {}",
+                    test_value,
+                    il.token_literal());
+        },
+        _ => panic!("il is not Expression::IntegerLiteral. Got {:?}", il)
+    }
 }
 
 #[test]
@@ -164,6 +269,8 @@ let foobar = 838383;
                         "stmt.name is not {}. Got {:?}",
                         expected,
                         name);
+            } else {
+                panic!("name is not Expression::Identifier. Got {:?}", name);
             }
         } else {
             panic!("stmt is not Statement::Let. Got {:?}", stmt);
@@ -198,5 +305,98 @@ return 993322;
             panic!("stmt is not Statement::Return. Got {:?}", stmt);
         }
     }
+}
 
+#[test]
+fn test_identifier_expression() {
+    let input = "foobar;";
+
+    let mut l = Lexer::new(input.to_string());
+    let mut p = Parser::new(&mut l);
+    let program = p.parse_program();
+    check_parser_errors(&p);
+
+    assert!(program.statements.len() == 1,
+            "program has not enough statements. Got {}",
+            program.statements.len());
+
+    if let Statement::Expression { ref expression, .. } = program.statements[0] {
+        if let Expression::Identifier { ref value, .. } = *expression {
+            assert!(value == "foobar", "value not 'foobar'. Got '{}'", value);
+            assert!(expression.token_literal() == "foobar",
+                    "token_literal is not 'foobar'. Got {}",
+                    expression.token_literal());
+        } else {
+            panic!("expression is not Expression::Identifier. Got {:?}",
+                   expression);
+        }
+    } else {
+        panic!("program.statements[0] is not Statement::Expression. Got {:?}",
+               program.statements[0]);
+    }
+}
+
+#[test]
+fn test_integer_literal_expression() {
+    let input = "5;";
+
+    let mut l = Lexer::new(input.to_string());
+    let mut p = Parser::new(&mut l);
+    let program = p.parse_program();
+    check_parser_errors(&p);
+
+    assert!(program.statements.len() == 1,
+            "program has not enough statements. Got {}",
+            program.statements.len());
+
+    if let Statement::Expression { ref expression, .. } = program.statements[0] {
+        if let Expression::IntegerLiteral { ref value, .. } = *expression {
+            assert!(*value == 5, "value is not 5. Got {}", value);
+            assert!(expression.token_literal() == "5",
+                    "token_literal() is not '5'. Got {}",
+                    expression.token_literal());
+        } else {
+            panic!("expression is not Expression::IntegerLiteral. Got {:?}",
+                   expression);
+        }
+    } else {
+        panic!("program.statements[0] is not Statement::Expression. Got {:?}",
+               program.statements[0]);
+    }
+}
+
+#[test]
+fn test_parsing_prefix_expressions() {
+    let tests = vec![
+        ("!5", "!", 5),
+        ("-15", "-", 15)
+    ];
+
+    for (input, op, value) in tests {
+        let mut l = Lexer::new(input.to_string());
+        let mut p = Parser::new(&mut l);
+        let program = p.parse_program();
+        check_parser_errors(&p);
+
+        assert!(program.statements.len() == 1,
+                "program.statements does not contain 1 statement. Got {}",
+                program.statements.len());
+
+        if let Statement::Expression { ref expression, .. } = program.statements[0] {
+            if let Expression::Prefix { ref operator, .. } = *expression {
+                assert!(operator == op,
+                        "operator is not {}. Got {}",
+                        op,
+                        operator);
+                check_integer_literal(expression, value);
+
+            } else {
+                panic!("expression is not Expression::Prefix. Got {:?}",
+                       expression);
+            }
+        } else {
+            panic!("program.statements[0] is not Statement::Expression. Got {:?}",
+                   program.statements[0]);
+        }
+    }
 }

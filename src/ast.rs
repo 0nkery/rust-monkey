@@ -60,20 +60,32 @@ pub enum Expression {
         token: Token,
         value: String,
     },
-    Empty
+    IntegerLiteral {
+        token: Token,
+        value: i64
+    },
+    Prefix {
+        token: Token,
+        operator: String,
+        right: Box<Expression>
+    }
 }
 
 impl<'a> Node<'a> for Expression {
     fn token_literal(&self) -> &str {
         match *self {
             Expression::Identifier { ref token, .. } => &token.literal,
-            _ => ""
+            Expression::IntegerLiteral { ref token, .. } => &token.literal,
+            Expression::Prefix { ref token, .. } => &token.literal,
         }
     }
     fn string(&self) -> String {
         match *self {
             Expression::Identifier { ref value, .. } => value.clone(),
-            _ => String::new()
+            Expression::IntegerLiteral { ref token, .. } => token.literal.to_string(),
+            Expression::Prefix { ref operator, ref right, .. } => {
+                format!("({}{})", operator, right.string())
+            }
         }
     }
 }
