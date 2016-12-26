@@ -373,9 +373,9 @@ fn test_parsing_prefix_expressions() {
                 program.statements.len());
 
         if let Statement::Expression { ref expression, .. } = program.statements[0] {
-            if let Expression::Prefix { ref operator, .. } = *expression {
+            if let Expression::Prefix { ref operator, ref right, .. } = *expression {
                 assert!(operator == op, "operator is not {}. Got {}", op, operator);
-                check_integer_literal(expression, value);
+                check_integer_literal(right, value);
 
             } else {
                 panic!("expression is not Expression::Prefix. Got {:?}", expression);
