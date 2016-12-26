@@ -4,7 +4,7 @@ use super::token::TokenType;
 use super::ast::Program;
 use super::ast::Node;
 use super::ast::Statement;
-use super::ast::Identifier;
+use super::ast::Expression;
 
 
 struct Parser<'a> {
@@ -47,7 +47,10 @@ impl<'a> Parser<'a> {
             return None;
         }
 
-        let name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+        let name = Expression::Identifier {
+            token: self.cur_token.clone(),
+            value: self.cur_token.literal.clone()
+        };
 
         if !self.expect_peek(TokenType::Assign) {
             return None;
@@ -151,15 +154,17 @@ let foobar = 838383;
                 stmt.token_literal());
 
         if let Statement::Let { name, .. } = stmt {
-            assert!(name.value == *expected,
-                    "stmt.name.value is not {}. Got {}",
-                    expected,
-                    name.value);
+            if let Expression::Identifier { ref value, .. } = name {
+                assert!(value == *expected,
+                        "stmt.name.value is not {}. Got {}",
+                        expected,
+                        value);
 
-            assert!(name.token_literal() == *expected,
-                    "stmt.name is not {}. Got {:?}",
-                    expected,
-                    name);
+                assert!(name.token_literal() == *expected,
+                        "stmt.name is not {}. Got {:?}",
+                        expected,
+                        name);
+            }
         } else {
             panic!("stmt is not Statement::Let. Got {:?}", stmt);
         }
