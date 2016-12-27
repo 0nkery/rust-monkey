@@ -158,6 +158,7 @@ impl<'a> Parser<'a>
             TokenType::True | TokenType::False => self.parse_boolean(),
             TokenType::LeftParen => self.parse_grouped_expr(),
             TokenType::If => self.parse_if_expr(),
+            TokenType::Function => self.parse_function_literal(),
             ref tt @ _ => {
                 let err_msg = format!("No prefix parse fn for {:?} found.", tt);
                 self.errors.push(err_msg);
@@ -261,6 +262,68 @@ impl<'a> Parser<'a>
             consequence: Box::new(consequence.unwrap()),
             alternative: alternative
         })
+    }
+
+    fn parse_function_literal(&mut self) -> Option<Expression> {
+        let token = self.cur_token.clone();
+
+        if !self.expect_peek(TokenType::LeftParen) {
+            return None;
+        }
+
+        let parameters = self.parse_function_parameters();
+        if parameters.is_none() {
+            return None;
+        }
+
+        if !self.expect_peek(TokenType::LeftBrace) {
+            return None;
+        }
+
+        let body = self.parse_block_stmt();
+        if body.is_none() {
+            return None;
+        }
+
+        Some(Expression::FunctionLiteral {
+            token: token,
+            parameters: parameters.unwrap(),
+            body: Box::new(body.unwrap()),
+        })
+    }
+
+    fn parse_function_parameters(&mut self) -> Option<Vec<Expression>> {
+        let mut identifiers = Vec::new();
+
+        if self.peek_token.token_type == TokenType::RightParen {
+            self.next_token();
+            return Some(identifiers);
+        }
+
+        self.next_token();
+
+        let ident = Expression::Identifier {
+            token: self.cur_token.clone(),
+            value: self.cur_token.literal.clone(),
+        };
+        identifiers.push(ident);
+
+        while self.peek_token.token_type == TokenType::Comma {
+            self.next_token();
+            self.next_token();
+
+            let ident = Expression::Identifier {
+                token: self.cur_token.clone(),
+                value: self.cur_token.literal.clone()
+            };
+            identifiers.push(ident);
+        }
+
+        if self.expect_peek(TokenType::RightParen) {
+            Some(identifiers)
+        } else {
+            None
+        }
     }
 
     fn parse_prefix_expr(&mut self) -> Option<Expression> {
@@ -790,6 +853,40 @@ fn test_if_expression() {
                     alternative);
         } else {
             panic!("expression is not Expression::If. Got {:?}",
+                   expression);
+        }
+    } else {
+        panic!("program.statements[0] is not Statement::Expression. Got {:?}",
+               program.statements[0]);
+    }
+}
+
+
+#[test]
+fn test_function_literal_parsing() {
+    let input = "fn(x, y) { x + y; }";
+
+    let mut l = Lexer::new(input.to_string());
+    let mut p = Parser::new(&mut l);
+    let program = p.parse_program();
+    check_parser_errors(&p);
+
+    assert!(program.statements.len() == 1,
+            "program.statements does not contain 1 statement. Got {}",
+            program.statements.len());
+
+    if let Statement::Expression { ref expression, .. } = program.statements[0] {
+        if let Expression::FunctionLiteral { ref parameters, ref body, .. } = *expression {
+            assert!(parameters.len() == 2,
+                    "parameters wrong. Want 2, Got {}",
+                    parameters.len());
+            if let Statement::Block { ref statements, .. } = *body.as_ref() {
+                assert!(statements.len() == 1,
+                        "statements should have 1 statement. Got {}",
+                        statements.len());
+            }
+        } else {
+            panic!("expression is not Expression::FunctionLiteral. Got {:?}",
                    expression);
         }
     } else {

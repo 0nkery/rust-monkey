@@ -90,6 +90,11 @@ pub enum Expression {
         condition: Box<Expression>,
         consequence: Box<Statement>,
         alternative: Option<Box<Statement>>
+    },
+    FunctionLiteral {
+        token: Token,
+        parameters: Vec<Expression>,
+        body: Box<Statement>
     }
 }
 
@@ -102,6 +107,7 @@ impl<'a> Node<'a> for Expression {
             Expression::Infix { ref token, .. } => &token.literal,
             Expression::Boolean { ref token, .. } => &token.literal,
             Expression::If { ref token, .. } => &token.literal,
+            Expression::FunctionLiteral { ref token, .. } => &token.literal,
         }
     }
     fn string(&self) -> String {
@@ -123,6 +129,19 @@ impl<'a> Node<'a> for Expression {
                 }
 
                 format!("{}{}", s, appendix)
+            },
+            Expression::FunctionLiteral { ref parameters, ref body, .. } => {
+                let mut params = Vec::new();
+                for param in parameters {
+                    params.push(param.string());
+                }
+
+                format!(
+                    "{}({}){}",
+                    self.token_literal(),
+                    params.join(", "),
+                    body.string()
+                )
             }
         }
     }
