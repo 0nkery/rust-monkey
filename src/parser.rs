@@ -112,6 +112,26 @@ impl<'a> Parser<'a>
         })
     }
 
+    fn parse_block_stmt(&mut self) ->Option<Statement> {
+        let token = self.cur_token.clone();
+        let mut statements = Vec::new();
+
+        self.next_token();
+
+        while self.cur_token.token_type != TokenType::RightBrace {
+            let stmt = self.parse_stmt();
+            if stmt.is_some() {
+                statements.push(stmt.unwrap());
+            }
+            self.next_token();
+        }
+
+        Some(Statement::Block {
+            token: token,
+            statements: statements
+        })
+    }
+
     fn parse_expr(&mut self, precedence: Precedence) -> Option<Expression> {
         let mut left = self.parse_prefix();
 
@@ -137,6 +157,7 @@ impl<'a> Parser<'a>
             TokenType::Bang | TokenType::Minus => self.parse_prefix_expr(),
             TokenType::True | TokenType::False => self.parse_boolean(),
             TokenType::LeftParen => self.parse_grouped_expr(),
+            TokenType::If => self.parse_if_expr(),
             ref tt @ _ => {
                 let err_msg = format!("No prefix parse fn for {:?} found.", tt);
                 self.errors.push(err_msg);
@@ -190,6 +211,56 @@ impl<'a> Parser<'a>
         } else {
             None
         }
+    }
+
+    fn parse_if_expr(&mut self) -> Option<Expression> {
+        let token = self.cur_token.clone();
+
+        if !self.expect_peek(TokenType::LeftParen) {
+            return None;
+        }
+
+        self.next_token();
+        let condition = self.parse_expr(Precedence::Lowest);
+
+        if condition.is_none() {
+            return None;
+        }
+
+        if !self.expect_peek(TokenType::RightParen) {
+            return None;
+        }
+        if !self.expect_peek(TokenType::LeftBrace) {
+            return None;
+        }
+
+        let consequence = self.parse_block_stmt();
+
+        if consequence.is_none() {
+            return None;
+        }
+
+        let mut alternative = None;
+
+        if self.peek_token.token_type == TokenType::Else {
+            self.next_token();
+
+            if !self.expect_peek(TokenType::LeftBrace) {
+                return None;
+            }
+
+            let alternative_maybe = self.parse_block_stmt();
+            if alternative_maybe.is_some() {
+                alternative = Some(Box::new(alternative_maybe.unwrap()));
+            }
+        }
+
+        Some(Expression::If {
+            token: token,
+            condition: Box::new(condition.unwrap()),
+            consequence: Box::new(consequence.unwrap()),
+            alternative: alternative
+        })
     }
 
     fn parse_prefix_expr(&mut self) -> Option<Expression> {
@@ -307,6 +378,42 @@ fn check_integer_literal(il: &Expression, test_value: i64) {
                     il.token_literal());
         },
         _ => panic!("il is not Expression::IntegerLiteral. Got {:?}", il),
+    }
+}
+
+#[cfg(test)]
+fn check_infix_expression(ie: &Expression, exp_left: &str, exp_op: &str, exp_right: &str) {
+    if let Expression::Infix { ref left, ref operator, ref right, .. } = *ie {
+        assert!(left.string() == exp_left,
+                "Infix: left is not {}. Got {}",
+                exp_left,
+                left.string());
+        assert!(operator == exp_op,
+                "Infix: op is not {}. Got {}",
+                exp_left,
+                operator);
+        assert!(right.string() == exp_right,
+                "Infix: right is not {}. Got {}",
+                exp_right,
+                right.string());
+    } else {
+        panic!("Expression is not Expression::Infix. Got {:?}", ie);
+    }
+}
+
+#[cfg(test)]
+fn check_identifier(ident: &Expression, exp_value: &str) {
+    if let Expression::Identifier { ref value, .. } = *ident {
+        assert!(value == exp_value,
+                "ident.value is not {}. Got {}",
+                exp_value,
+                value);
+        assert!(ident.token_literal() == exp_value,
+                "ident.token_literal() is not {}. Got {}",
+                exp_value,
+                ident.token_literal());
+    } else {
+        panic!("ident is not Expression::Identifier. Got {:?}", ident);
     }
 }
 
@@ -646,5 +753,47 @@ fn test_boolean_expression() {
             panic!("stmt is not Statement::Expression. Got {:?}",
                    program.statements[0]);
         }
+    }
+}
+
+#[test]
+fn test_if_expression() {
+    let input = "if (x < y) { x }";
+
+    let mut l = Lexer::new(input.to_string());
+    let mut p = Parser::new(&mut l);
+    let program = p.parse_program();
+    check_parser_errors(&p);
+
+    assert!(program.statements.len() == 1,
+            "program.statements does not contain 1 statement. Got {}",
+            program.statements.len());
+
+    if let Statement::Expression { ref expression, .. } = program.statements[0] {
+        if let Expression::If { ref condition, ref consequence, ref alternative, .. } = *expression {
+            check_infix_expression(condition, "x", "<", "y");
+            if let Statement::Block { ref statements, .. } = *consequence.as_ref() {
+                assert!(statements.len() == 1,
+                        "Consequence does not contain 1 statement. Got {}",
+                        statements.len());
+                if let Statement::Expression { ref expression, .. } = statements[0] {
+                    check_identifier(expression, "x");
+                } else {
+                    panic!("consequence is not Statement::Expression. Got {:?}", consequence);
+                }
+            } else {
+                panic!("consequence is not Statement::Block. Got {:?}", consequence);
+            }
+
+            assert!(alternative.is_none(),
+                    "expression.alternative was not None. Got {:?}",
+                    alternative);
+        } else {
+            panic!("expression is not Expression::If. Got {:?}",
+                   expression);
+        }
+    } else {
+        panic!("program.statements[0] is not Statement::Expression. Got {:?}",
+               program.statements[0]);
     }
 }

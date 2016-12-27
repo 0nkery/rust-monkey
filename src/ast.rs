@@ -6,7 +6,7 @@ pub trait Node<'a> {
     fn string(&self) -> String;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     Let {
         token: Token,
@@ -21,6 +21,10 @@ pub enum Statement {
         token: Token,
         expression: Expression,
     },
+    Block {
+        token: Token,
+        statements: Vec<Statement>
+    }
 }
 
 impl<'a> Node<'a> for Statement {
@@ -29,6 +33,7 @@ impl<'a> Node<'a> for Statement {
             Statement::Let { ref token, .. } => &token.literal,
             Statement::Return { ref token, .. } => &token.literal,
             Statement::Expression { ref token, .. } => &token.literal,
+            Statement::Block { ref token, .. } => &token.literal,
         }
     }
 
@@ -41,6 +46,14 @@ impl<'a> Node<'a> for Statement {
                 format!("{} {};", self.token_literal(), value.string())
             }
             Statement::Expression { ref expression, .. } => format!("{}", expression.string()),
+            Statement::Block { ref statements, .. } => {
+                let mut s = String::new();
+                for stmt in statements {
+                    s += &stmt.string();
+                }
+
+                s
+            }
         };
 
         s
@@ -71,6 +84,12 @@ pub enum Expression {
     Boolean {
         token: Token,
         value: bool
+    },
+    If {
+        token: Token,
+        condition: Box<Expression>,
+        consequence: Box<Statement>,
+        alternative: Option<Box<Statement>>
     }
 }
 
@@ -82,6 +101,7 @@ impl<'a> Node<'a> for Expression {
             Expression::Prefix { ref token, .. } => &token.literal,
             Expression::Infix { ref token, .. } => &token.literal,
             Expression::Boolean { ref token, .. } => &token.literal,
+            Expression::If { ref token, .. } => &token.literal,
         }
     }
     fn string(&self) -> String {
@@ -94,7 +114,16 @@ impl<'a> Node<'a> for Expression {
             Expression::Infix { ref left, ref operator, ref right, .. } => {
                 format!("({} {} {})", left.string(), operator, right.string())
             },
-            Expression::Boolean { ref token, .. } => token.literal.to_string()
+            Expression::Boolean { ref token, .. } => token.literal.to_string(),
+            Expression::If { ref condition, ref consequence, ref alternative, .. } => {
+                let s = format!("if {} {}", condition.string(), consequence.string());
+                let mut appendix = String::new();
+                if alternative.is_some() {
+                    appendix = format!("else {}", alternative.as_ref().unwrap().string());
+                }
+
+                format!("{}{}", s, appendix)
+            }
         }
     }
 }
