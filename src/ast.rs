@@ -68,6 +68,10 @@ pub enum Expression {
         operator: String,
         right: Box<Expression>,
     },
+    Boolean {
+        token: Token,
+        value: bool
+    }
 }
 
 impl<'a> Node<'a> for Expression {
@@ -77,6 +81,7 @@ impl<'a> Node<'a> for Expression {
             Expression::IntegerLiteral { ref token, .. } => &token.literal,
             Expression::Prefix { ref token, .. } => &token.literal,
             Expression::Infix { ref token, .. } => &token.literal,
+            Expression::Boolean { ref token, .. } => &token.literal,
         }
     }
     fn string(&self) -> String {
@@ -88,7 +93,8 @@ impl<'a> Node<'a> for Expression {
             }
             Expression::Infix { ref left, ref operator, ref right, .. } => {
                 format!("({} {} {})", left.string(), operator, right.string())
-            }
+            },
+            Expression::Boolean { ref token, .. } => token.literal.to_string()
         }
     }
 }

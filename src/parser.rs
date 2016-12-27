@@ -135,6 +135,7 @@ impl<'a> Parser<'a>
             TokenType::Ident => self.parse_identifier(),
             TokenType::Int => self.parse_integer_literal(),
             TokenType::Bang | TokenType::Minus => self.parse_prefix_expr(),
+            TokenType::True | TokenType::False => self.parse_boolean(),
             ref tt @ _ => {
                 let err_msg = format!("No prefix parse fn for {:?} found.", tt);
                 self.errors.push(err_msg);
@@ -169,6 +170,13 @@ impl<'a> Parser<'a>
                 None
             },
         }
+    }
+
+    fn parse_boolean(&self) -> Option<Expression> {
+        Some(Expression::Boolean {
+            token: self.cur_token.clone(),
+            value: self.cur_token.token_type == TokenType::True
+        })
     }
 
     fn parse_prefix_expr(&mut self) -> Option<Expression> {
@@ -540,6 +548,22 @@ fn test_operator_precedence_parsing() {
             "3 + 4 * 5 == 3 * 1 + 4 * 5",
             "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"
         ),
+        (
+            "true",
+            "true"
+        ),
+        (
+            "false",
+            "false"
+        ),
+        (
+            "3 > 5 == false",
+            "((3 > 5) == false)"
+        ),
+        (
+            "3 < 5 == true",
+            "((3 < 5) == true)"
+        )
     ];
 
     for (input, expected) in tests {
@@ -550,5 +574,44 @@ fn test_operator_precedence_parsing() {
 
         let actual = program.string();
         assert!(actual == expected, "Expected {}. Got {}", expected, actual);
+    }
+}
+
+
+#[test]
+fn test_boolean_expression() {
+    let tests = vec![
+        ("true;", true, "true"),
+        ("false;", false, "false")
+    ];
+
+    for (input, expected_value, expected_literal) in tests {
+        let mut l = Lexer::new(input.to_string());
+        let mut p = Parser::new(&mut l);
+        let program = p.parse_program();
+        check_parser_errors(&p);
+
+        assert!(program.statements.len() == 1,
+                "program.statements does not contain 1 statement. Got {}",
+                program.statements.len());
+
+        if let Statement::Expression { ref expression, .. } = program.statements[0] {
+            if let Expression::Boolean { value, .. } = *expression {
+                assert!(value == expected_value,
+                        "value is not {}. Got {}",
+                        expected_value,
+                        value);
+                assert!(expression.token_literal() == expected_literal,
+                        "token_literal is not {}. Got {}",
+                        expected_literal,
+                        expression.token_literal());
+            } else {
+                panic!("expression is not Expression::Boolean. Got {:?}",
+                       expression);
+            }
+        } else {
+            panic!("stmt is not Statement::Expression. Got {:?}",
+                   program.statements[0]);
+        }
     }
 }
