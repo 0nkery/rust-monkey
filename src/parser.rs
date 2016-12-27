@@ -8,7 +8,8 @@ use super::ast::Expression;
 
 
 #[derive(PartialEq, PartialOrd)]
-enum Precedence {
+enum Precedence
+{
     Lowest,
     Equals,
     LessGreater,
@@ -19,14 +20,16 @@ enum Precedence {
 }
 
 
-struct Parser<'a> {
+struct Parser<'a>
+{
     lexer: &'a mut Lexer,
     cur_token: Token,
     peek_token: Token,
     errors: Vec<String>,
 }
 
-impl<'a> Parser<'a> {
+impl<'a> Parser<'a>
+{
     fn new(lexer: &'a mut Lexer) -> Self {
         let cur_token = lexer.next_token();
         let peek_token = lexer.next_token();
@@ -137,7 +140,7 @@ impl<'a> Parser<'a> {
                 self.errors.push(err_msg);
 
                 None
-            }
+            },
         }
     }
 
@@ -158,13 +161,13 @@ impl<'a> Parser<'a> {
                     token: literal_token,
                     value: value,
                 })
-            }
+            },
             Err(_) => {
                 let msg = format!("Could not parse {} as integer", literal_token.literal);
                 self.errors.push(msg);
 
                 None
-            }
+            },
         }
     }
 
@@ -201,13 +204,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn peek_precedence(&self) -> Precedence {
-        self.precedence(&self.peek_token.token_type)
-    }
+    fn peek_precedence(&self) -> Precedence { self.precedence(&self.peek_token.token_type) }
 
-    fn cur_precedence(&self) -> Precedence {
-        self.precedence(&self.cur_token.token_type)
-    }
+    fn cur_precedence(&self) -> Precedence { self.precedence(&self.cur_token.token_type) }
 
     fn parse_infix_expr(&mut self, left: Expression) -> Option<Expression> {
         let token = self.cur_token.clone();
@@ -277,12 +276,15 @@ fn check_parser_errors<'a>(parser: &'a Parser) {
 fn check_integer_literal(il: &Expression, test_value: i64) {
     match *il {
         Expression::IntegerLiteral { ref value, .. } => {
-            assert!(*value == test_value, "il.value is not {}. Got {}", test_value, value);
+            assert!(*value == test_value,
+                    "il.value is not {}. Got {}",
+                    test_value,
+                    value);
             assert!(il.token_literal() == test_value.to_string(),
                     "il.token_literal() is not {}. Got {}",
                     test_value,
                     il.token_literal());
-        }
+        },
         _ => panic!("il is not Expression::IntegerLiteral. Got {:?}", il),
     }
 }
@@ -315,7 +317,10 @@ let foobar = 838383;
 
         if let Statement::Let { name, .. } = stmt {
             if let Expression::Identifier { ref value, .. } = name {
-                assert!(value == *expected, "stmt.name.value is not {}. Got {}", expected, value);
+                assert!(value == *expected,
+                        "stmt.name.value is not {}. Got {}",
+                        expected,
+                        value);
 
                 assert!(name.token_literal() == *expected,
                         "stmt.name is not {}. Got {:?}",
@@ -379,7 +384,8 @@ fn test_identifier_expression() {
                     "token_literal is not 'foobar'. Got {}",
                     expression.token_literal());
         } else {
-            panic!("expression is not Expression::Identifier. Got {:?}", expression);
+            panic!("expression is not Expression::Identifier. Got {:?}",
+                   expression);
         }
     } else {
         panic!("program.statements[0] is not Statement::Expression. Got {:?}",
@@ -407,7 +413,8 @@ fn test_integer_literal_expression() {
                     "token_literal() is not '5'. Got {}",
                     expression.token_literal());
         } else {
-            panic!("expression is not Expression::IntegerLiteral. Got {:?}", expression);
+            panic!("expression is not Expression::IntegerLiteral. Got {:?}",
+                   expression);
         }
     } else {
         panic!("program.statements[0] is not Statement::Expression. Got {:?}",
@@ -479,5 +486,69 @@ fn test_parsing_infix_expressions() {
             panic!("program.statements[0] is not Statement::Expression. Got {:?}",
                    program.statements[0]);
         }
+    }
+}
+
+#[test]
+fn test_operator_precedence_parsing() {
+    let tests = vec![
+        (
+            "-a * b",
+            "((-a) * b)"
+        ),
+        (
+            "!-a",
+            "(!(-a))"
+        ),
+        (
+            "a + b + c",
+            "((a + b) + c)"
+        ),
+        (
+            "a + b - c",
+            "((a + b) - c)"
+        ),
+        (
+            "a * b * c",
+            "((a * b) * c)"
+        ),
+        (
+            "a * b / c",
+            "((a * b) / c)"
+        ),
+        (
+            "a + b / c",
+            "(a + (b / c))"
+        ),
+        (
+            "a + b * c + d / e - f",
+            "(((a + (b * c)) + (d / e)) - f)"
+        ),
+        (
+            "3 + 4; -5 * 5",
+            "(3 + 4)((-5) * 5)"
+        ),
+        (
+            "5 > 4 == 3 < 4",
+            "((5 > 4) == (3 < 4))"
+        ),
+        (
+            "5 < 4 != 3 > 4",
+            "((5 < 4) != (3 > 4))"
+        ),
+        (
+            "3 + 4 * 5 == 3 * 1 + 4 * 5",
+            "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let mut l = Lexer::new(input.to_string());
+        let mut p = Parser::new(&mut l);
+        let program = p.parse_program();
+        check_parser_errors(&p);
+
+        let actual = program.string();
+        assert!(actual == expected, "Expected {}. Got {}", expected, actual);
     }
 }
