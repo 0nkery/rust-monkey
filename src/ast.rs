@@ -95,6 +95,11 @@ pub enum Expression {
         token: Token,
         parameters: Vec<Expression>,
         body: Box<Statement>
+    },
+    Call {
+        token: Token,
+        function: Box<Expression>,
+        arguments: Vec<Expression>
     }
 }
 
@@ -108,6 +113,7 @@ impl<'a> Node<'a> for Expression {
             Expression::Boolean { ref token, .. } => &token.literal,
             Expression::If { ref token, .. } => &token.literal,
             Expression::FunctionLiteral { ref token, .. } => &token.literal,
+            Expression::Call { ref token, .. } => &token.literal,
         }
     }
     fn string(&self) -> String {
@@ -142,6 +148,14 @@ impl<'a> Node<'a> for Expression {
                     params.join(", "),
                     body.string()
                 )
+            },
+            Expression::Call { ref arguments, ref function, .. } => {
+                let mut args = Vec::new();
+                for arg in arguments {
+                    args.push(arg.string());
+                }
+
+                format!("{}({})", function.string(), args.join(", "))
             }
         }
     }

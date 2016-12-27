@@ -355,6 +355,7 @@ impl<'a> Parser<'a>
             TokenType::Minus => Precedence::Sum,
             TokenType::Slash => Precedence::Product,
             TokenType::Asterisk => Precedence::Product,
+            TokenType::LeftParen => Precedence::Call,
             _ => Precedence::Lowest,
         }
     }
@@ -364,20 +365,83 @@ impl<'a> Parser<'a>
     fn cur_precedence(&self) -> Precedence { self.precedence(&self.cur_token.token_type) }
 
     fn parse_infix_expr(&mut self, left: Expression) -> Option<Expression> {
+        match self.cur_token.token_type {
+            TokenType::Minus | TokenType::Plus |
+            TokenType::Asterisk | TokenType::Slash |
+            TokenType::LessThan | TokenType::GreaterThan |
+            TokenType::Eq | TokenType::NotEq => {
+                let token = self.cur_token.clone();
+                let op = self.cur_token.literal.clone();
+
+                let precedence = self.cur_precedence();
+                self.next_token();
+                let right = self.parse_expr(precedence);
+
+                if let Some(r) = right {
+                    Some(Expression::Infix {
+                        token: token,
+                        operator: op,
+                        left: Box::new(left),
+                        right: Box::new(r),
+                    })
+                } else {
+                    None
+                }
+            },
+            TokenType::LeftParen => self.parse_call_expr(left),
+            ref tt @ _ => {
+                let msg = format!("Infix parse func for {:?} not found.", tt);
+                self.errors.push(msg);
+
+                None
+            }
+        }
+        
+    }
+
+    fn parse_call_expr(&mut self, func: Expression) -> Option<Expression> {
         let token = self.cur_token.clone();
-        let op = self.cur_token.literal.clone();
+        let args = self.parse_call_args();
 
-        let precedence = self.cur_precedence();
+        if args.is_none() {
+            return None;
+        }
+
+        Some(Expression::Call {
+            token: token,
+            arguments: args.unwrap(),
+            function: Box::new(func)
+        })
+    }
+
+    fn parse_call_args(&mut self) -> Option<Vec<Expression>> {
+        let mut args = Vec::new();
+
+        if self.peek_token.token_type == TokenType::RightParen {
+            self.next_token();
+            return Some(args);
+        }
+
         self.next_token();
-        let right = self.parse_expr(precedence);
+        let expr = self.parse_expr(Precedence::Lowest);
+        if expr.is_none() {
+            return None;
+        }
+        args.push(expr.unwrap());
 
-        if let Some(r) = right {
-            Some(Expression::Infix {
-                token: token,
-                operator: op,
-                left: Box::new(left),
-                right: Box::new(r),
-            })
+        while self.peek_token.token_type == TokenType::Comma {
+            self.next_token();
+            self.next_token();
+
+            let expr = self.parse_expr(Precedence::Lowest);
+            if expr.is_none() {
+                return None;
+            }
+            args.push(expr.unwrap());
+        }
+
+        if self.expect_peek(TokenType::RightParen) {
+            Some(args)
         } else {
             None
         }
@@ -887,6 +951,37 @@ fn test_function_literal_parsing() {
             }
         } else {
             panic!("expression is not Expression::FunctionLiteral. Got {:?}",
+                   expression);
+        }
+    } else {
+        panic!("program.statements[0] is not Statement::Expression. Got {:?}",
+               program.statements[0]);
+    }
+}
+
+#[test]
+fn test_call_expression_parsing() {
+    let input = "add(1, 2 * 3, 4 + 5);";
+
+    let mut l = Lexer::new(input.to_string());
+    let mut p = Parser::new(&mut l);
+    let program = p.parse_program();
+    check_parser_errors(&p);
+
+    assert!(program.statements.len() == 1,
+            "program.statements does not contain 1 statement. Got {}",
+            program.statements.len());
+
+    if let Statement::Expression { ref expression, .. } = program.statements[0] {
+        if let Expression::Call { ref arguments, ref function, .. } = *expression {
+            check_identifier(function, "add");
+            assert!(arguments.len() == 3,
+                    "parameters wrong. Want 3, Got {}",
+                    arguments.len());
+            check_infix_expression(&arguments[1], "2", "*", "3");
+            check_infix_expression(&arguments[2], "4", "+", "5");
+        } else {
+            panic!("expression is not Expression::Call. Got {:?}",
                    expression);
         }
     } else {
