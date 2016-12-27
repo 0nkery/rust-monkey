@@ -136,6 +136,7 @@ impl<'a> Parser<'a>
             TokenType::Int => self.parse_integer_literal(),
             TokenType::Bang | TokenType::Minus => self.parse_prefix_expr(),
             TokenType::True | TokenType::False => self.parse_boolean(),
+            TokenType::LeftParen => self.parse_grouped_expr(),
             ref tt @ _ => {
                 let err_msg = format!("No prefix parse fn for {:?} found.", tt);
                 self.errors.push(err_msg);
@@ -177,6 +178,18 @@ impl<'a> Parser<'a>
             token: self.cur_token.clone(),
             value: self.cur_token.token_type == TokenType::True
         })
+    }
+
+    fn parse_grouped_expr(&mut self) -> Option<Expression> {
+        self.next_token();
+
+        let expr = self.parse_expr(Precedence::Lowest);
+
+        if self.expect_peek(TokenType::RightParen) {
+            expr
+        } else {
+            None
+        }
     }
 
     fn parse_prefix_expr(&mut self) -> Option<Expression> {
@@ -563,6 +576,26 @@ fn test_operator_precedence_parsing() {
         (
             "3 < 5 == true",
             "((3 < 5) == true)"
+        ),
+        (
+            "1 + (2 + 3) + 4",
+            "((1 + (2 + 3)) + 4)"
+        ),
+        (
+            "(5 + 5) * 2",
+            "((5 + 5) * 2)"
+        ),
+        (
+            "2 / (5 + 5)",
+            "(2 / (5 + 5))"
+        ),
+        (
+            "-(5 + 5)",
+            "(-(5 + 5))"
+        ),
+        (
+            "!(true == true)",
+            "(!(true == true))"
         )
     ];
 
