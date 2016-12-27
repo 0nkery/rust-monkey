@@ -15,7 +15,7 @@ pub enum Statement {
     },
     Return {
         token: Token,
-        value: Expression,
+        value: Option<Expression>,
     },
     Expression {
         token: Token,
@@ -43,7 +43,15 @@ impl<'a> Node<'a> for Statement {
                 format!("{} {} = {};", self.token_literal(), name.string(), value.string())
             }
             Statement::Return { ref value, .. } => {
-                format!("{} {};", self.token_literal(), value.string())
+                format!(
+                    "{} {};",
+                    self.token_literal(),
+                    if value.is_some() {
+                        value.as_ref().unwrap().string()
+                    } else {
+                        String::new()
+                    }
+                )
             }
             Statement::Expression { ref expression, .. } => format!("{}", expression.string()),
             Statement::Block { ref statements, .. } => {

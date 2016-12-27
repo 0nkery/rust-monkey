@@ -71,14 +71,21 @@ impl<'a> Parser<'a>
             return None;
         }
 
-        while self.cur_token.token_type != TokenType::Semicolon {
+        self.next_token();
+
+        let value = self.parse_expr(Precedence::Lowest);
+        if value.is_none() {
+            return None;
+        }
+
+        if self.peek_token.token_type == TokenType::Semicolon {
             self.next_token();
         }
 
         Some(Statement::Let {
             token: let_token,
             name: name,
-            value: unsafe { ::std::mem::uninitialized() },
+            value: value.unwrap(),
         })
     }
 
@@ -87,13 +94,15 @@ impl<'a> Parser<'a>
 
         self.next_token();
 
-        while self.cur_token.token_type != TokenType::Semicolon {
+        let return_value = self.parse_expr(Precedence::Lowest);
+
+        if self.peek_token.token_type == TokenType::Semicolon {
             self.next_token();
         }
 
         Some(Statement::Return {
             token: return_token,
-            value: unsafe { ::std::mem::uninitialized() },
+            value: return_value,
         })
     }
 
