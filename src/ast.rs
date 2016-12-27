@@ -1,5 +1,4 @@
 use super::token::Token;
-use super::token::TokenType;
 
 pub trait Node<'a> {
     fn token_literal(&'a self) -> &'a str;

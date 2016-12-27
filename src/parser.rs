@@ -2,7 +2,6 @@ use super::lexer::Lexer;
 use super::token::Token;
 use super::token::TokenType;
 use super::ast::Program;
-use super::ast::Node;
 use super::ast::Statement;
 use super::ast::Expression;
 
@@ -20,7 +19,7 @@ enum Precedence
 }
 
 
-struct Parser<'a>
+pub struct Parser<'a>
 {
     lexer: &'a mut Lexer,
     cur_token: Token,
@@ -30,7 +29,7 @@ struct Parser<'a>
 
 impl<'a> Parser<'a>
 {
-    fn new(lexer: &'a mut Lexer) -> Self {
+    pub fn new(lexer: &'a mut Lexer) -> Self {
         let cur_token = lexer.next_token();
         let peek_token = lexer.next_token();
 
@@ -473,7 +472,7 @@ impl<'a> Parser<'a>
         self.errors.push(err_msg);
     }
 
-    fn parse_program(&mut self) -> Program {
+    pub fn parse_program(&mut self) -> Program {
         let mut program = Program::new();
 
         while self.cur_token.token_type != TokenType::EOF {
@@ -485,6 +484,10 @@ impl<'a> Parser<'a>
         }
 
         program
+    }
+
+    pub fn errors(&self) -> &[String] {
+        &self.errors
     }
 }
 
