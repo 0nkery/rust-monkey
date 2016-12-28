@@ -3,6 +3,7 @@ pub enum Object {
     Integer(i64),
     Boolean(bool),
     Null,
+    ReturnValue(Box<Object>)
 }
 
 impl Object {
@@ -11,6 +12,7 @@ impl Object {
             Object::Integer(val) => format!("{}", val),
             Object::Boolean(val) => format!("{}", val),
             Object::Null => "null".to_string(),
+            Object::ReturnValue(ref obj) => obj.inspect(),
         }
     }
 

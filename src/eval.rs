@@ -16,6 +16,10 @@ fn eval_statements(stmts: &Vec<Statement>) -> Object {
 
     for stmt in stmts {
         result = eval_statement(&stmt);
+
+        if let Object::ReturnValue(val) = result {
+            return *val;
+        }
     }
 
     result
@@ -25,6 +29,14 @@ fn eval_statement(stmt: &Statement) -> Object {
     match *stmt {
         Statement::Expression { ref expression, .. } => eval_expr(expression),
         Statement::Block { ref statements, .. } => eval_statements(statements),
+        Statement::Return { ref value, .. } => {
+            let mut return_val = NULL;
+            if let Some(ref v) = *value {
+                return_val = eval_expr(v);
+            }
+
+            Object::ReturnValue(Box::new(return_val))
+        }
         _ => NULL
     }
 }
@@ -242,8 +254,23 @@ fn test_if_else_expressions() {
         let evaluated = test_eval(input);
         match expected {
             Object::Integer(val) => check_integer_object(evaluated, val),
-            Object::Boolean(val) => check_boolean_object(evaluated, val),
             NULL => check_null_object(evaluated),
+            _ => panic!("Fix the test."),
         }
+    }
+}
+
+#[test]
+fn test_return_statements() {
+    let tests = vec![
+        ("return 10;", 10),
+        ("return 10; 9;", 10),
+        ("return 2 * 5; 9;", 10),
+        ("9; return 2 * 5; 9;", 10),
+    ];
+
+    for (input, expected) in tests {
+        let evaluated = test_eval(input);
+        check_integer_object(evaluated, expected);
     }
 }
