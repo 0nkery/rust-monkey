@@ -1,9 +1,12 @@
 use super::object::Object;
-use super::lexer::Lexer;
-use super::parser::Parser;
+
 use super::ast::Program;
 use super::ast::Statement;
 use super::ast::Expression;
+
+
+const TRUE: Object = Object::Boolean(true);
+const FALSE: Object = Object::Boolean(false);
 
 
 pub fn eval(program: Program) -> Object {
@@ -22,11 +25,16 @@ pub fn eval(program: Program) -> Object {
 fn eval_expr(expr: &Expression) -> Object {
     match *expr {
         Expression::IntegerLiteral { value, .. } => Object::Integer(value),
-        Expression::Boolean { value, .. } => Object::Boolean(value),
+        Expression::Boolean { value, .. } => if value { TRUE } else { FALSE },
         _ => Object::Null
     }
 }
 
+
+#[cfg(test)]
+use super::lexer::Lexer;
+#[cfg(test)]
+use super::parser::Parser;
 
 #[cfg(test)]
 fn test_eval(input: &str) -> Object {
