@@ -8,17 +8,21 @@ use super::ast::Expression;
 
 
 pub fn eval(program: Program) -> Object {
-    eval_statements(&program.statements)
+    eval_statements(&program.statements, false)
 }
 
-fn eval_statements(stmts: &Vec<Statement>) -> Object {
+fn eval_statements(stmts: &Vec<Statement>, nested: bool) -> Object {
     let mut result = NULL;
 
     for stmt in stmts {
         result = eval_statement(&stmt);
 
         if let Object::ReturnValue(val) = result {
-            return *val;
+            if nested {
+                return Object::ReturnValue(val);
+            } else {
+                return *val;
+            }
         }
     }
 
@@ -28,7 +32,7 @@ fn eval_statements(stmts: &Vec<Statement>) -> Object {
 fn eval_statement(stmt: &Statement) -> Object {
     match *stmt {
         Statement::Expression { ref expression, .. } => eval_expr(expression),
-        Statement::Block { ref statements, .. } => eval_statements(statements),
+        Statement::Block { ref statements, .. } => eval_statements(statements, true),
         Statement::Return { ref value, .. } => {
             let mut return_val = NULL;
             if let Some(ref v) = *value {
@@ -267,6 +271,13 @@ fn test_return_statements() {
         ("return 10; 9;", 10),
         ("return 2 * 5; 9;", 10),
         ("9; return 2 * 5; 9;", 10),
+        ("if (10 > 1) {
+            if (10 > 1) {
+              return 10;
+            }
+
+            return 1;
+         }", 10),
     ];
 
     for (input, expected) in tests {
