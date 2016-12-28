@@ -7,6 +7,7 @@ use super::ast::Expression;
 
 const TRUE: Object = Object::Boolean(true);
 const FALSE: Object = Object::Boolean(false);
+const NULL: Object = Object::Null;
 
 
 pub fn eval(program: Program) -> Object {
@@ -15,7 +16,7 @@ pub fn eval(program: Program) -> Object {
     for stmt in program.statements {
         result = match stmt {
             Statement::Expression { ref expression, .. } => eval_expr(expression),
-            _ => Object::Null
+            _ => NULL
         };
     }
 
@@ -26,7 +27,27 @@ fn eval_expr(expr: &Expression) -> Object {
     match *expr {
         Expression::IntegerLiteral { value, .. } => Object::Integer(value),
         Expression::Boolean { value, .. } => if value { TRUE } else { FALSE },
-        _ => Object::Null
+        Expression::Prefix { ref operator, ref right, .. } => {
+            let right = eval_expr(right);
+            eval_prefix_expr(operator, right)
+        },
+        _ => NULL
+    }
+}
+
+fn eval_prefix_expr(op: &str, right: Object) -> Object {
+    match op {
+        "!" => eval_bang_operator_expr(right),
+        _ => NULL
+    }
+}
+
+fn eval_bang_operator_expr(right: Object) -> Object {
+    match right {
+        TRUE => FALSE,
+        FALSE => TRUE,
+        NULL => TRUE,
+        _ => FALSE
     }
 }
 
@@ -90,6 +111,23 @@ fn test_eval_boolean_expression() {
     let tests = vec![
         ("true", true),
         ("false", false)
+    ];
+
+    for (input, expected) in tests {
+        let evaluated = test_eval(input);
+        check_boolean_object(evaluated, expected);
+    }
+}
+
+#[test]
+fn test_bang_operator() {
+    let tests = vec![
+        ("!true", false),
+        ("!false", true),
+        ("!5", false),
+        ("!!true", true),
+        ("!!false", false),
+        ("!!5", true),
     ];
 
     for (input, expected) in tests {
