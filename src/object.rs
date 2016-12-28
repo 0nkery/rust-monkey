@@ -1,9 +1,12 @@
+use std::fmt;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Object {
     Integer(i64),
     Boolean(bool),
     Null,
-    ReturnValue(Box<Object>)
+    ReturnValue(Box<Object>),
+    Error(String),
 }
 
 impl Object {
@@ -13,6 +16,7 @@ impl Object {
             Object::Boolean(val) => format!("{}", val),
             Object::Null => "null".to_string(),
             Object::ReturnValue(ref obj) => obj.inspect(),
+            Object::Error(ref msg) => format!("ERROR: {}", msg)
         }
     }
 
@@ -21,6 +25,23 @@ impl Object {
             TRUE => true,
             NULL | FALSE => false,
             _ => true,
+        }
+    }
+
+    pub fn is_error(&self) -> bool {
+        match *self {
+            Object::Error(..) => true,
+            _ => false,
+        }
+    }
+}
+
+impl fmt::Display for Object {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Object::Integer(..) => write!(f, "Integer"),
+            Object::Boolean(..) => write!(f, "Boolean"),
+            _ => write!(f, ""),
         }
     }
 }
