@@ -1,26 +1,32 @@
 use super::object::Object;
-
+use super::object::NULL;
+use super::object::TRUE;
+use super::object::FALSE;
 use super::ast::Program;
 use super::ast::Statement;
 use super::ast::Expression;
 
 
-const TRUE: Object = Object::Boolean(true);
-const FALSE: Object = Object::Boolean(false);
-const NULL: Object = Object::Null;
-
-
 pub fn eval(program: Program) -> Object {
-    let mut result = Object::Null;
+    eval_statements(&program.statements)
+}
 
-    for stmt in program.statements {
-        result = match stmt {
-            Statement::Expression { ref expression, .. } => eval_expr(expression),
-            _ => NULL
-        };
+fn eval_statements(stmts: &Vec<Statement>) -> Object {
+    let mut result = NULL;
+
+    for stmt in stmts {
+        result = eval_statement(&stmt);
     }
 
     result
+}
+
+fn eval_statement(stmt: &Statement) -> Object {
+    match *stmt {
+        Statement::Expression { ref expression, .. } => eval_expr(expression),
+        Statement::Block { ref statements, .. } => eval_statements(statements),
+        _ => NULL
+    }
 }
 
 fn eval_expr(expr: &Expression) -> Object {
@@ -35,6 +41,17 @@ fn eval_expr(expr: &Expression) -> Object {
             let left = eval_expr(left);
             let right = eval_expr(right);
             eval_infix_expr(operator, left, right)
+        },
+        Expression::If { ref condition, ref consequence, ref alternative, .. } => {
+            let cond = eval_expr(condition);
+
+            if cond.is_truthy() {
+                eval_statement(consequence)
+            } else if let Some(ref alt) = *alternative {
+                eval_statement(alt)
+            } else {
+                NULL
+            }
         }
         _ => NULL
     }
@@ -130,6 +147,11 @@ fn check_boolean_object(obj: Object, expected: bool) {
     }
 }
 
+#[cfg(test)]
+fn check_null_object(obj: Object) {
+    assert!(obj == NULL, "obj is not NULL. Got {:?}", obj);
+}
+
 
 #[test]
 fn test_eval_integer_expression() {
@@ -201,5 +223,27 @@ fn test_bang_operator() {
     for (input, expected) in tests {
         let evaluated = test_eval(input);
         check_boolean_object(evaluated, expected);
+    }
+}
+
+#[test]
+fn test_if_else_expressions() {
+    let tests = vec![
+        ("if (true) { 10 }", Object::Integer(10)),
+        ("if (false) { 10 }", NULL),
+        ("if (1) { 10 }", Object::Integer(10)),
+        ("if (1 < 2) { 10 }", Object::Integer(10)),
+        ("if (1 > 2) { 10 }", NULL),
+        ("if (1 > 2) { 10 } else { 20 }", Object::Integer(20)),
+        ("if (1 < 2) { 10 } else { 20 }", Object::Integer(10)),
+    ];
+
+    for (input, expected) in tests {
+        let evaluated = test_eval(input);
+        match expected {
+            Object::Integer(val) => check_integer_object(evaluated, val),
+            Object::Boolean(val) => check_boolean_object(evaluated, val),
+            NULL => check_null_object(evaluated),
+        }
     }
 }

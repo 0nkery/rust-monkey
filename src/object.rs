@@ -13,4 +13,16 @@ impl Object {
             Object::Null => "null".to_string(),
         }
     }
+
+    pub fn is_truthy(&self) -> bool {
+        match *self {
+            TRUE => true,
+            NULL | FALSE => false,
+            _ => true,
+        }
+    }
 }
+
+pub const TRUE: Object = Object::Boolean(true);
+pub const FALSE: Object = Object::Boolean(false);
+pub const NULL: Object = Object::Null;
