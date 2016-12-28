@@ -17,7 +17,7 @@ impl Object {
             Object::Boolean(val) => format!("{}", val),
             Object::Null => "null".to_string(),
             Object::ReturnValue(ref obj) => obj.inspect(),
-            Object::Error(ref msg) => format!("ERROR: {}", msg)
+            Object::Error(ref msg) => format!("ERROR: {}", msg),
         }
     }
 
@@ -53,14 +53,12 @@ pub const NULL: Object = Object::Null;
 
 
 pub struct Env {
-    store: HashMap<String, Object>
+    store: HashMap<String, Object>,
 }
 
 impl Env {
     pub fn new() -> Self {
-        Env {
-            store: HashMap::new()
-        }
+        Env { store: HashMap::new() }
     }
 
     fn get(&self, name: &str) -> Result<Object, String> {

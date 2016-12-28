@@ -32,8 +32,7 @@ pub fn start(in_: Stdin, mut out: Stdout) {
         let (evaluated, new_env) = eval(program, env);
         env = new_env;
 
-        write!(&mut out, "{}\n", evaluated.inspect())
-            .expect("Failed to write to stdout");
+        write!(&mut out, "{}\n", evaluated.inspect()).expect("Failed to write to stdout");
     }
 }
 

@@ -7,8 +7,7 @@ use super::ast::Expression;
 
 
 #[derive(PartialEq, PartialOrd)]
-enum Precedence
-{
+enum Precedence {
     Lowest,
     Equals,
     LessGreater,
@@ -19,16 +18,14 @@ enum Precedence
 }
 
 
-pub struct Parser<'a>
-{
+pub struct Parser<'a> {
     lexer: &'a mut Lexer,
     cur_token: Token,
     peek_token: Token,
     errors: Vec<String>,
 }
 
-impl<'a> Parser<'a>
-{
+impl<'a> Parser<'a> {
     pub fn new(lexer: &'a mut Lexer) -> Self {
         let cur_token = lexer.next_token();
         let peek_token = lexer.next_token();
@@ -120,7 +117,7 @@ impl<'a> Parser<'a>
         })
     }
 
-    fn parse_block_stmt(&mut self) ->Option<Statement> {
+    fn parse_block_stmt(&mut self) -> Option<Statement> {
         let token = self.cur_token.clone();
         let mut statements = Vec::new();
 
@@ -136,7 +133,7 @@ impl<'a> Parser<'a>
 
         Some(Statement::Block {
             token: token,
-            statements: statements
+            statements: statements,
         })
     }
 
@@ -172,7 +169,7 @@ impl<'a> Parser<'a>
                 self.errors.push(err_msg);
 
                 None
-            },
+            }
         }
     }
 
@@ -193,20 +190,20 @@ impl<'a> Parser<'a>
                     token: literal_token,
                     value: value,
                 })
-            },
+            }
             Err(_) => {
                 let msg = format!("Could not parse {} as integer", literal_token.literal);
                 self.errors.push(msg);
 
                 None
-            },
+            }
         }
     }
 
     fn parse_boolean(&self) -> Option<Expression> {
         Some(Expression::Boolean {
             token: self.cur_token.clone(),
-            value: self.cur_token.token_type == TokenType::True
+            value: self.cur_token.token_type == TokenType::True,
         })
     }
 
@@ -268,7 +265,7 @@ impl<'a> Parser<'a>
             token: token,
             condition: Box::new(condition.unwrap()),
             consequence: Box::new(consequence.unwrap()),
-            alternative: alternative
+            alternative: alternative,
         })
     }
 
@@ -322,7 +319,7 @@ impl<'a> Parser<'a>
 
             let ident = Expression::Identifier {
                 token: self.cur_token.clone(),
-                value: self.cur_token.literal.clone()
+                value: self.cur_token.literal.clone(),
             };
             identifiers.push(ident);
         }
@@ -368,16 +365,18 @@ impl<'a> Parser<'a>
         }
     }
 
-    fn peek_precedence(&self) -> Precedence { self.precedence(&self.peek_token.token_type) }
+    fn peek_precedence(&self) -> Precedence {
+        self.precedence(&self.peek_token.token_type)
+    }
 
-    fn cur_precedence(&self) -> Precedence { self.precedence(&self.cur_token.token_type) }
+    fn cur_precedence(&self) -> Precedence {
+        self.precedence(&self.cur_token.token_type)
+    }
 
     fn parse_infix_expr(&mut self, left: Expression) -> Option<Expression> {
         match self.cur_token.token_type {
-            TokenType::Minus | TokenType::Plus |
-            TokenType::Asterisk | TokenType::Slash |
-            TokenType::LessThan | TokenType::GreaterThan |
-            TokenType::Eq | TokenType::NotEq => {
+            TokenType::Minus | TokenType::Plus | TokenType::Asterisk | TokenType::Slash |
+            TokenType::LessThan | TokenType::GreaterThan | TokenType::Eq | TokenType::NotEq => {
                 let token = self.cur_token.clone();
                 let op = self.cur_token.literal.clone();
 
@@ -395,7 +394,7 @@ impl<'a> Parser<'a>
                 } else {
                     None
                 }
-            },
+            }
             TokenType::LeftParen => self.parse_call_expr(left),
             ref tt @ _ => {
                 let msg = format!("Infix parse func for {:?} not found.", tt);
@@ -404,7 +403,7 @@ impl<'a> Parser<'a>
                 None
             }
         }
-        
+
     }
 
     fn parse_call_expr(&mut self, func: Expression) -> Option<Expression> {
@@ -418,7 +417,7 @@ impl<'a> Parser<'a>
         Some(Expression::Call {
             token: token,
             arguments: args.unwrap(),
-            function: Box::new(func)
+            function: Box::new(func),
         })
     }
 
@@ -511,15 +510,12 @@ use super::ast::Node;
 fn check_integer_literal(il: &Expression, test_value: i64) {
     match *il {
         Expression::IntegerLiteral { ref value, .. } => {
-            assert!(*value == test_value,
-                    "il.value is not {}. Got {}",
-                    test_value,
-                    value);
+            assert!(*value == test_value, "il.value is not {}. Got {}", test_value, value);
             assert!(il.token_literal() == test_value.to_string(),
                     "il.token_literal() is not {}. Got {}",
                     test_value,
                     il.token_literal());
-        },
+        }
         _ => panic!("il is not Expression::IntegerLiteral. Got {:?}", il),
     }
 }
@@ -531,10 +527,7 @@ fn check_infix_expression(ie: &Expression, exp_left: &str, exp_op: &str, exp_rig
                 "Infix: left is not {}. Got {}",
                 exp_left,
                 left.string());
-        assert!(operator == exp_op,
-                "Infix: op is not {}. Got {}",
-                exp_left,
-                operator);
+        assert!(operator == exp_op, "Infix: op is not {}. Got {}", exp_left, operator);
         assert!(right.string() == exp_right,
                 "Infix: right is not {}. Got {}",
                 exp_right,
@@ -547,10 +540,7 @@ fn check_infix_expression(ie: &Expression, exp_left: &str, exp_op: &str, exp_rig
 #[cfg(test)]
 fn check_identifier(ident: &Expression, exp_value: &str) {
     if let Expression::Identifier { ref value, .. } = *ident {
-        assert!(value == exp_value,
-                "ident.value is not {}. Got {}",
-                exp_value,
-                value);
+        assert!(value == exp_value, "ident.value is not {}. Got {}", exp_value, value);
         assert!(ident.token_literal() == exp_value,
                 "ident.token_literal() is not {}. Got {}",
                 exp_value,
@@ -588,10 +578,7 @@ let foobar = 838383;
 
         if let Statement::Let { name, .. } = stmt {
             if let Expression::Identifier { ref value, .. } = name {
-                assert!(value == *expected,
-                        "stmt.name.value is not {}. Got {}",
-                        expected,
-                        value);
+                assert!(value == *expected, "stmt.name.value is not {}. Got {}", expected, value);
 
                 assert!(name.token_literal() == *expected,
                         "stmt.name is not {}. Got {:?}",
@@ -655,8 +642,7 @@ fn test_identifier_expression() {
                     "token_literal is not 'foobar'. Got {}",
                     expression.token_literal());
         } else {
-            panic!("expression is not Expression::Identifier. Got {:?}",
-                   expression);
+            panic!("expression is not Expression::Identifier. Got {:?}", expression);
         }
     } else {
         panic!("program.statements[0] is not Statement::Expression. Got {:?}",
@@ -684,8 +670,7 @@ fn test_integer_literal_expression() {
                     "token_literal() is not '5'. Got {}",
                     expression.token_literal());
         } else {
-            panic!("expression is not Expression::IntegerLiteral. Got {:?}",
-                   expression);
+            panic!("expression is not Expression::IntegerLiteral. Got {:?}", expression);
         }
     } else {
         panic!("program.statements[0] is not Statement::Expression. Got {:?}",
@@ -762,92 +747,27 @@ fn test_parsing_infix_expressions() {
 
 #[test]
 fn test_operator_precedence_parsing() {
-    let tests = vec![
-        (
-            "-a * b",
-            "((-a) * b)"
-        ),
-        (
-            "!-a",
-            "(!(-a))"
-        ),
-        (
-            "a + b + c",
-            "((a + b) + c)"
-        ),
-        (
-            "a + b - c",
-            "((a + b) - c)"
-        ),
-        (
-            "a * b * c",
-            "((a * b) * c)"
-        ),
-        (
-            "a * b / c",
-            "((a * b) / c)"
-        ),
-        (
-            "a + b / c",
-            "(a + (b / c))"
-        ),
-        (
-            "a + b * c + d / e - f",
-            "(((a + (b * c)) + (d / e)) - f)"
-        ),
-        (
-            "3 + 4; -5 * 5",
-            "(3 + 4)((-5) * 5)"
-        ),
-        (
-            "5 > 4 == 3 < 4",
-            "((5 > 4) == (3 < 4))"
-        ),
-        (
-            "5 < 4 != 3 > 4",
-            "((5 < 4) != (3 > 4))"
-        ),
-        (
-            "3 + 4 * 5 == 3 * 1 + 4 * 5",
-            "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"
-        ),
-        (
-            "true",
-            "true"
-        ),
-        (
-            "false",
-            "false"
-        ),
-        (
-            "3 > 5 == false",
-            "((3 > 5) == false)"
-        ),
-        (
-            "3 < 5 == true",
-            "((3 < 5) == true)"
-        ),
-        (
-            "1 + (2 + 3) + 4",
-            "((1 + (2 + 3)) + 4)"
-        ),
-        (
-            "(5 + 5) * 2",
-            "((5 + 5) * 2)"
-        ),
-        (
-            "2 / (5 + 5)",
-            "(2 / (5 + 5))"
-        ),
-        (
-            "-(5 + 5)",
-            "(-(5 + 5))"
-        ),
-        (
-            "!(true == true)",
-            "(!(true == true))"
-        )
-    ];
+    let tests = vec![("-a * b", "((-a) * b)"),
+                     ("!-a", "(!(-a))"),
+                     ("a + b + c", "((a + b) + c)"),
+                     ("a + b - c", "((a + b) - c)"),
+                     ("a * b * c", "((a * b) * c)"),
+                     ("a * b / c", "((a * b) / c)"),
+                     ("a + b / c", "(a + (b / c))"),
+                     ("a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"),
+                     ("3 + 4; -5 * 5", "(3 + 4)((-5) * 5)"),
+                     ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
+                     ("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"),
+                     ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"),
+                     ("true", "true"),
+                     ("false", "false"),
+                     ("3 > 5 == false", "((3 > 5) == false)"),
+                     ("3 < 5 == true", "((3 < 5) == true)"),
+                     ("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"),
+                     ("(5 + 5) * 2", "((5 + 5) * 2)"),
+                     ("2 / (5 + 5)", "(2 / (5 + 5))"),
+                     ("-(5 + 5)", "(-(5 + 5))"),
+                     ("!(true == true)", "(!(true == true))")];
 
     for (input, expected) in tests {
         let mut l = Lexer::new(input.to_string());
@@ -863,10 +783,7 @@ fn test_operator_precedence_parsing() {
 
 #[test]
 fn test_boolean_expression() {
-    let tests = vec![
-        ("true;", true, "true"),
-        ("false;", false, "false")
-    ];
+    let tests = vec![("true;", true, "true"), ("false;", false, "false")];
 
     for (input, expected_value, expected_literal) in tests {
         let mut l = Lexer::new(input.to_string());
@@ -880,21 +797,16 @@ fn test_boolean_expression() {
 
         if let Statement::Expression { ref expression, .. } = program.statements[0] {
             if let Expression::Boolean { value, .. } = *expression {
-                assert!(value == expected_value,
-                        "value is not {}. Got {}",
-                        expected_value,
-                        value);
+                assert!(value == expected_value, "value is not {}. Got {}", expected_value, value);
                 assert!(expression.token_literal() == expected_literal,
                         "token_literal is not {}. Got {}",
                         expected_literal,
                         expression.token_literal());
             } else {
-                panic!("expression is not Expression::Boolean. Got {:?}",
-                       expression);
+                panic!("expression is not Expression::Boolean. Got {:?}", expression);
             }
         } else {
-            panic!("stmt is not Statement::Expression. Got {:?}",
-                   program.statements[0]);
+            panic!("stmt is not Statement::Expression. Got {:?}", program.statements[0]);
         }
     }
 }
@@ -913,7 +825,8 @@ fn test_if_expression() {
             program.statements.len());
 
     if let Statement::Expression { ref expression, .. } = program.statements[0] {
-        if let Expression::If { ref condition, ref consequence, ref alternative, .. } = *expression {
+        if let Expression::If { ref condition, ref consequence, ref alternative, .. } =
+               *expression {
             check_infix_expression(condition, "x", "<", "y");
             if let Statement::Block { ref statements, .. } = *consequence.as_ref() {
                 assert!(statements.len() == 1,
@@ -932,8 +845,7 @@ fn test_if_expression() {
                     "expression.alternative was not None. Got {:?}",
                     alternative);
         } else {
-            panic!("expression is not Expression::If. Got {:?}",
-                   expression);
+            panic!("expression is not Expression::If. Got {:?}", expression);
         }
     } else {
         panic!("program.statements[0] is not Statement::Expression. Got {:?}",
@@ -957,17 +869,14 @@ fn test_function_literal_parsing() {
 
     if let Statement::Expression { ref expression, .. } = program.statements[0] {
         if let Expression::FunctionLiteral { ref parameters, ref body, .. } = *expression {
-            assert!(parameters.len() == 2,
-                    "parameters wrong. Want 2, Got {}",
-                    parameters.len());
+            assert!(parameters.len() == 2, "parameters wrong. Want 2, Got {}", parameters.len());
             if let Statement::Block { ref statements, .. } = *body.as_ref() {
                 assert!(statements.len() == 1,
                         "statements should have 1 statement. Got {}",
                         statements.len());
             }
         } else {
-            panic!("expression is not Expression::FunctionLiteral. Got {:?}",
-                   expression);
+            panic!("expression is not Expression::FunctionLiteral. Got {:?}", expression);
         }
     } else {
         panic!("program.statements[0] is not Statement::Expression. Got {:?}",
@@ -991,14 +900,11 @@ fn test_call_expression_parsing() {
     if let Statement::Expression { ref expression, .. } = program.statements[0] {
         if let Expression::Call { ref arguments, ref function, .. } = *expression {
             check_identifier(function, "add");
-            assert!(arguments.len() == 3,
-                    "parameters wrong. Want 3, Got {}",
-                    arguments.len());
+            assert!(arguments.len() == 3, "parameters wrong. Want 3, Got {}", arguments.len());
             check_infix_expression(&arguments[1], "2", "*", "3");
             check_infix_expression(&arguments[2], "4", "+", "5");
         } else {
-            panic!("expression is not Expression::Call. Got {:?}",
-                   expression);
+            panic!("expression is not Expression::Call. Got {:?}", expression);
         }
     } else {
         panic!("program.statements[0] is not Statement::Expression. Got {:?}",

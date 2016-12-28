@@ -22,8 +22,8 @@ pub enum Statement {
     },
     Block {
         token: Token,
-        statements: Vec<Statement>
-    }
+        statements: Vec<Statement>,
+    },
 }
 
 impl<'a> Node<'a> for Statement {
@@ -42,15 +42,13 @@ impl<'a> Node<'a> for Statement {
                 format!("{} {} = {};", self.token_literal(), name.string(), value.string())
             }
             Statement::Return { ref value, .. } => {
-                format!(
-                    "{} {};",
-                    self.token_literal(),
-                    if value.is_some() {
-                        value.as_ref().unwrap().string()
-                    } else {
-                        String::new()
-                    }
-                )
+                format!("{} {};",
+                        self.token_literal(),
+                        if value.is_some() {
+                            value.as_ref().unwrap().string()
+                        } else {
+                            String::new()
+                        })
             }
             Statement::Expression { ref expression, .. } => format!("{}", expression.string()),
             Statement::Block { ref statements, .. } => {
@@ -90,24 +88,24 @@ pub enum Expression {
     },
     Boolean {
         token: Token,
-        value: bool
+        value: bool,
     },
     If {
         token: Token,
         condition: Box<Expression>,
         consequence: Box<Statement>,
-        alternative: Option<Box<Statement>>
+        alternative: Option<Box<Statement>>,
     },
     FunctionLiteral {
         token: Token,
         parameters: Vec<Expression>,
-        body: Box<Statement>
+        body: Box<Statement>,
     },
     Call {
         token: Token,
         function: Box<Expression>,
-        arguments: Vec<Expression>
-    }
+        arguments: Vec<Expression>,
+    },
 }
 
 impl<'a> Node<'a> for Expression {
@@ -132,7 +130,7 @@ impl<'a> Node<'a> for Expression {
             }
             Expression::Infix { ref left, ref operator, ref right, .. } => {
                 format!("({} {} {})", left.string(), operator, right.string())
-            },
+            }
             Expression::Boolean { ref token, .. } => token.literal.to_string(),
             Expression::If { ref condition, ref consequence, ref alternative, .. } => {
                 let s = format!("if {} {}", condition.string(), consequence.string());
@@ -142,20 +140,15 @@ impl<'a> Node<'a> for Expression {
                 }
 
                 format!("{}{}", s, appendix)
-            },
+            }
             Expression::FunctionLiteral { ref parameters, ref body, .. } => {
                 let mut params = Vec::new();
                 for param in parameters {
                     params.push(param.string());
                 }
 
-                format!(
-                    "{}({}){}",
-                    self.token_literal(),
-                    params.join(", "),
-                    body.string()
-                )
-            },
+                format!("{}({}){}", self.token_literal(), params.join(", "), body.string())
+            }
             Expression::Call { ref arguments, ref function, .. } => {
                 let mut args = Vec::new();
                 for arg in arguments {
