@@ -6,6 +6,7 @@ mod repl;
 mod ast;
 mod parser;
 mod object;
+mod eval;
 
 use std::io::stdin;
 use std::io::stdout;
