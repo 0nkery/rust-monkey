@@ -4,7 +4,7 @@ use std::io::Write;
 
 use super::lexer::Lexer;
 use super::parser::Parser;
-use super::ast::Node;
+use super::eval::eval;
 
 
 const PROMPT: &'static str = ">> ";
@@ -26,7 +26,10 @@ pub fn start(in_: Stdin, mut out: Stdout) {
             continue;
         }
 
-        write!(&mut out, "{}\n", program.string()).expect("Failed to write to stdout");
+        let evaluated = eval(program);
+
+        write!(&mut out, "{}\n", evaluated.inspect())
+            .expect("Failed to write to stdout");
     }
 }
 
