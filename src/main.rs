@@ -5,6 +5,7 @@ mod lexer;
 mod repl;
 mod ast;
 mod parser;
+mod object;
 
 use std::io::stdin;
 use std::io::stdout;
