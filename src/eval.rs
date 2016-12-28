@@ -22,13 +22,14 @@ pub fn eval(program: Program) -> Object {
 fn eval_expr(expr: &Expression) -> Object {
     match *expr {
         Expression::IntegerLiteral { value, .. } => Object::Integer(value),
+        Expression::Boolean { value, .. } => Object::Boolean(value),
         _ => Object::Null
     }
 }
 
 
 #[cfg(test)]
-fn check_eval(input: &str) -> Object {
+fn test_eval(input: &str) -> Object {
     let mut l = Lexer::new(input.to_string());
     let mut p = Parser::new(&mut l);
     let program = p.parse_program();
@@ -45,9 +46,20 @@ fn check_integer_object(obj: Object, expected: i64) {
                     val,
                     expected);
         },
-        _ => {
-            panic!("Object is not an Integer. Got {:?}", obj);
-        }
+        _ => panic!("Object is not an Integer. Got {:?}", obj)
+    }
+}
+
+#[cfg(test)]
+fn check_boolean_object(obj: Object, expected: bool) {
+    match obj {
+        Object::Boolean(val) => {
+            assert!(val == expected,
+                    "Object has wrong value. Got {}, want {}",
+                    val,
+                    expected);
+        },
+        _ => panic!("Object is not an Boolean. Got {:?}", obj)
     }
 }
 
@@ -60,7 +72,20 @@ fn test_eval_integer_expression() {
     ];
 
     for (input, expected) in tests {
-        let evaluated = check_eval(input);
+        let evaluated = test_eval(input);
         check_integer_object(evaluated, expected);
+    }
+}
+
+#[test]
+fn test_eval_boolean_expression() {
+    let tests = vec![
+        ("true", true),
+        ("false", false)
+    ];
+
+    for (input, expected) in tests {
+        let evaluated = test_eval(input);
+        check_boolean_object(evaluated, expected);
     }
 }
