@@ -38,6 +38,7 @@ fn eval_expr(expr: &Expression) -> Object {
 fn eval_prefix_expr(op: &str, right: Object) -> Object {
     match op {
         "!" => eval_bang_operator_expr(right),
+        "-" => eval_minus_prefix_operator_expr(right),
         _ => NULL
     }
 }
@@ -48,6 +49,13 @@ fn eval_bang_operator_expr(right: Object) -> Object {
         FALSE => TRUE,
         NULL => TRUE,
         _ => FALSE
+    }
+}
+
+fn eval_minus_prefix_operator_expr(right: Object) -> Object {
+    match right {
+        Object::Integer(val) => Object::Integer(-val),
+        _ => NULL,
     }
 }
 
@@ -97,7 +105,9 @@ fn check_boolean_object(obj: Object, expected: bool) {
 fn test_eval_integer_expression() {
     let tests = vec![
         ("5", 5),
-        ("10", 10)
+        ("10", 10),
+        ("-5", -5),
+        ("-10", -10)
     ];
 
     for (input, expected) in tests {
