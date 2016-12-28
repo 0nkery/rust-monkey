@@ -1,4 +1,5 @@
 use super::object::Object;
+use super::object::Env;
 use super::object::NULL;
 use super::object::TRUE;
 use super::object::FALSE;
@@ -7,58 +8,82 @@ use super::ast::Statement;
 use super::ast::Expression;
 
 
-pub fn eval(program: Program) -> Object {
-    eval_statements(&program.statements, false)
+pub struct Eval {
+    env: Env
 }
 
-fn eval_statements(stmts: &Vec<Statement>, nested: bool) -> Object {
-    let mut result = NULL;
-
-    for stmt in stmts {
-        result = eval_statement(&stmt);
-
-        match result {
-            Object::ReturnValue(val) => {
-                if nested {
-                    return Object::ReturnValue(val);
-                } else {
-                    return *val;
-                }
-            },
-            r @ Object::Error(..) => {
-                return r;
-            },
-            _ => { continue; }
-        }
+impl Eval {
+    pub fn new(program: Program, env: Env) -> Self {
+        Env { env: env }
     }
 
-    result
+    pub fn env(self) -> Env {
+        self.env
+    }
+
+    pub fn eval(&self) -> Object {
+        self.eval_statements(self.program.statements, false)
+    }
+
+    fn eval_statements(&self, stmts: &Vec<Statement>, nested: bool) -> Object {
+        let mut result = NULL;
+
+        for stmt in stmts {
+            let result = self.eval_statement(&stmt);
+
+            match result {
+                Object::ReturnValue(val) => {
+                    if nested {
+                        return Object::ReturnValue(val);
+                    } else {
+                        return *val;
+                    }
+                },
+                r @ Object::Error(..) => {
+                    return r;
+                },
+                _ => { continue; }
+            }
+        }
+
+        result
+    }
 }
 
-fn eval_statement(stmt: &Statement) -> Object {
+
+
+fn eval_statement(stmt: &Statement, env: Env) -> (Object, Env) {
     match *stmt {
-        Statement::Expression { ref expression, .. } => eval_expr(expression),
-        Statement::Block { ref statements, .. } => eval_statements(statements, true),
+        Statement::Expression { ref expression, .. } =>
+            eval_expr(expression, env),
+        Statement::Block { ref statements, .. } =>
+            eval_statements(statements, env, true),
         Statement::Return { ref value, .. } => {
             let mut return_val = NULL;
             if let Some(ref v) = *value {
-                return_val = eval_expr(v);
+                let (return_val, env) = eval_expr(v, env);
             }
 
             if return_val.is_error() {
-                return_val
+                (return_val, env)
             } else {
-                Object::ReturnValue(Box::new(return_val))
+                (Object::ReturnValue(Box::new(return_val)), env)
             }
 
+        },
+        Statement::Let { ref value, .. } => {
+            let (val, env) = eval_expr(value, env);
+            if val.is_error() {
+                return (val, env);
+            }
         }
-        _ => NULL
+        _ => (NULL, env)
     }
 }
 
-fn eval_expr(expr: &Expression) -> Object {
+fn eval_expr(expr: &Expression, env: Env) -> (Object, Env) {
     match *expr {
-        Expression::IntegerLiteral { value, .. } => Object::Integer(value),
+        Expression::IntegerLiteral { value, .. } => (Object::Integer(value), env),
         Expression::Boolean { value, .. } => to_boolean_object(value),
         Expression::Prefix { ref operator, ref right, .. } => {
             let right = eval_expr(right);
@@ -99,7 +124,7 @@ fn eval_expr(expr: &Expression) -> Object {
                 NULL
             }
         }
-        _ => NULL
+        _ => (NULL, env)
     }
 }
 
@@ -358,6 +383,10 @@ fn test_error_handling() {
                 }
                 return 1;
             }", "Unknown operator: Boolean + Boolean"
+        ),
+        (
+            "foobar",
+            "Identifier not found: foobar"
         )
     ];
 
@@ -372,5 +401,19 @@ fn test_error_handling() {
         } else {
             panic!("Evaluated object is not Object::Error. Got {:?}", evaluated);
         }
+    }
+}
+
+#[test]
+fn test_let_statements() {
+    let tests = vec![
+        ("let a = 5; a;", 5),
+        ("let a = 5 * 5; a;", 25),
+        ("let a = 5; let b = a; b;", 5),
+        ("let a = 5; let b = a; let c = a + b + 5; c;", 15),
+    ];
+
+    for (input, expected) in tests {
+        check_integer_object(test_eval(input), expected);
     }
 }

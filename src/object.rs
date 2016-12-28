@@ -1,4 +1,5 @@
 use std::fmt;
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Object {
@@ -49,3 +50,24 @@ impl fmt::Display for Object {
 pub const TRUE: Object = Object::Boolean(true);
 pub const FALSE: Object = Object::Boolean(false);
 pub const NULL: Object = Object::Null;
+
+
+pub struct Env {
+    store: HashMap<String, Object>
+}
+
+impl Env {
+    pub fn new() -> Self {
+        Env {
+            store: HashMap::new()
+        }
+    }
+
+    fn get(&self, name: &str) -> Result<Object, String> {
+        Ok(self.store[name])
+    }
+
+    fn set(&mut self, name: &str, val: Object) {
+        self.store[name] = val;
+    }
+}

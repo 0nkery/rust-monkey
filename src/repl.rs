@@ -5,12 +5,15 @@ use std::io::Write;
 use super::lexer::Lexer;
 use super::parser::Parser;
 use super::eval::eval;
+use super::object::Env;
 
 
 const PROMPT: &'static str = ">> ";
 
 
 pub fn start(in_: Stdin, mut out: Stdout) {
+    let mut env = Env::new();
+
     loop {
         print!("{}", PROMPT);
         out.flush().unwrap();
@@ -26,7 +29,8 @@ pub fn start(in_: Stdin, mut out: Stdout) {
             continue;
         }
 
-        let evaluated = eval(program);
+        let (evaluated, new_env) = eval(program, env);
+        env = new_env;
 
         write!(&mut out, "{}\n", evaluated.inspect())
             .expect("Failed to write to stdout");
