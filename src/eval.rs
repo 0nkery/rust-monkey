@@ -80,13 +80,20 @@ impl Eval {
                     return Object::ReturnValue(Box::new(return_val));
                 }
             }
-            Statement::Let { ref value, .. } => {
+            Statement::Let { ref value, ref name, .. } => {
                 let val = self.eval_expr(value);
                 if val.is_error() {
                     return val;
                 }
+                if let Expression::Identifier { ref value, .. } = *name {
+                    self.env.set(value, val);
+                    return val;
+                } else {
+                    return Object::Error("Internal interpreter error. Not an \
+                                          Expression::Identifier in Statement::Let::expression."
+                        .to_string());
+                }
             }
-            _ => NULL,
         }
     }
 
