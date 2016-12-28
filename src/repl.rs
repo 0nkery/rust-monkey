@@ -4,7 +4,7 @@ use std::io::Write;
 
 use super::lexer::Lexer;
 use super::parser::Parser;
-use super::eval::eval;
+use super::eval::Eval;
 use super::object::Env;
 
 
@@ -29,8 +29,9 @@ pub fn start(in_: Stdin, mut out: Stdout) {
             continue;
         }
 
-        let (evaluated, new_env) = eval(program, env);
-        env = new_env;
+        let eval = Eval::new(program, env);
+        let evaluated = eval.eval();
+        env = eval.env();
 
         write!(&mut out, "{}\n", evaluated.inspect()).expect("Failed to write to stdout");
     }

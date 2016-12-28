@@ -8,13 +8,26 @@ use super::ast::Statement;
 use super::ast::Expression;
 
 
+fn to_boolean_object(val: bool) -> Object {
+    if val {
+        TRUE
+    } else {
+        FALSE
+    }
+}
+
+
 pub struct Eval {
     env: Env,
+    program: Program,
 }
 
 impl Eval {
     pub fn new(program: Program, env: Env) -> Self {
-        Env { env: env }
+        Eval {
+            env: env,
+            program: program,
+        }
     }
 
     pub fn env(self) -> Env {
@@ -22,7 +35,7 @@ impl Eval {
     }
 
     pub fn eval(&self) -> Object {
-        self.eval_statements(self.program.statements, false)
+        self.eval_statements(&self.program.statements, false)
     }
 
     fn eval_statements(&self, stmts: &Vec<Statement>, nested: bool) -> Object {
@@ -50,141 +63,132 @@ impl Eval {
 
         result
     }
-}
 
-fn eval_statement(stmt: &Statement, env: Env) -> (Object, Env) {
-    match *stmt {
-        Statement::Expression { ref expression, .. } => eval_expr(expression, env),
-        Statement::Block { ref statements, .. } => eval_statements(statements, env, true),
-        Statement::Return { ref value, .. } => {
-            let mut return_val = NULL;
-            if let Some(ref v) = *value {
-                let (return_val, env) = eval_expr(v, env);
-            }
+    fn eval_statement(&self, stmt: &Statement) -> Object {
+        match *stmt {
+            Statement::Expression { ref expression, .. } => self.eval_expr(expression),
+            Statement::Block { ref statements, .. } => self.eval_statements(statements, true),
+            Statement::Return { ref value, .. } => {
+                let mut return_val = NULL;
+                if let Some(ref v) = *value {
+                    return_val = self.eval_expr(v);
+                }
 
-            if return_val.is_error() {
-                (return_val, env)
-            } else {
-                (Object::ReturnValue(Box::new(return_val)), env)
-            }
-
-        }
-        Statement::Let { ref value, .. } => {
-            let (val, env) = eval_expr(value, env);
-            if val.is_error() {
-                return (val, env);
-            }
-        }
-        _ => (NULL, env),
-    }
-}
-
-fn eval_expr(expr: &Expression, env: Env) -> (Object, Env) {
-    match *expr {
-        Expression::IntegerLiteral { value, .. } => (Object::Integer(value), env),
-        Expression::Boolean { value, .. } => to_boolean_object(value),
-        Expression::Prefix { ref operator, ref right, .. } => {
-            let right = eval_expr(right);
-
-            if right.is_error() {
-                return right;
-            }
-
-            eval_prefix_expr(operator, right)
-        }
-        Expression::Infix { ref left, ref right, ref operator, .. } => {
-            let left = eval_expr(left);
-
-            if left.is_error() {
-                return left;
-            }
-
-            let right = eval_expr(right);
-
-            if right.is_error() {
-                return right;
-            }
-
-            eval_infix_expr(operator, left, right)
-        }
-        Expression::If { ref condition, ref consequence, ref alternative, .. } => {
-            let cond = eval_expr(condition);
-
-            if cond.is_error() {
-                return cond;
-            }
-
-            if cond.is_truthy() {
-                eval_statement(consequence)
-            } else if let Some(ref alt) = *alternative {
-                eval_statement(alt)
-            } else {
-                NULL
-            }
-        }
-        _ => (NULL, env),
-    }
-}
-
-fn to_boolean_object(val: bool) -> Object {
-    if val {
-        TRUE
-    } else {
-        FALSE
-    }
-}
-
-fn eval_prefix_expr(op: &str, right: Object) -> Object {
-    match op {
-        "!" => eval_bang_operator_expr(right),
-        "-" => eval_minus_prefix_operator_expr(right),
-        _ => Object::Error(format!("Unknown operator: {}{}", op, right)),
-    }
-}
-
-fn eval_bang_operator_expr(right: Object) -> Object {
-    match right {
-        TRUE => FALSE,
-        FALSE => TRUE,
-        NULL => TRUE,
-        _ => FALSE,
-    }
-}
-
-fn eval_minus_prefix_operator_expr(right: Object) -> Object {
-    match right {
-        Object::Integer(val) => Object::Integer(-val),
-        r @ _ => Object::Error(format!("Unknown operator: -{}", r)),
-    }
-}
-
-fn eval_infix_expr(op: &str, left: Object, right: Object) -> Object {
-    match (op, left, right) {
-        (_, Object::Integer(lval), Object::Integer(rval)) => {
-            match op {
-                "+" => Object::Integer(lval + rval),
-                "-" => Object::Integer(lval - rval),
-                "*" => Object::Integer(lval * rval),
-                "/" => Object::Integer(lval / rval),
-                "<" => to_boolean_object(lval < rval),
-                ">" => to_boolean_object(lval > rval),
-                "==" => to_boolean_object(lval == rval),
-                "!=" => to_boolean_object(lval != rval),
-                _ => {
-                    Object::Error(format!("Unknown operator: {} {} {}",
-                                          Object::Integer(lval),
-                                          op,
-                                          Object::Integer(rval)))
+                if return_val.is_error() {
+                    return return_val;
+                } else {
+                    return Object::ReturnValue(Box::new(return_val));
                 }
             }
+            Statement::Let { ref value, .. } => {
+                let val = self.eval_expr(value);
+                if val.is_error() {
+                    return val;
+                }
+            }
+            _ => NULL,
         }
-        ("==", lval, rval) => to_boolean_object(lval == rval),
-        ("!=", lval, rval) => to_boolean_object(lval != rval),
-        (_, l @ Object::Integer(..), r @ Object::Boolean(..)) |
-        (_, l @ Object::Boolean(..), r @ Object::Integer(..)) => {
-            Object::Error(format!("Type mismatch: {} {} {}", l, op, r))
+    }
+
+    fn eval_expr(&self, expr: &Expression) -> Object {
+        match *expr {
+            Expression::IntegerLiteral { value, .. } => Object::Integer(value),
+            Expression::Boolean { value, .. } => to_boolean_object(value),
+            Expression::Prefix { ref operator, ref right, .. } => {
+                let right = self.eval_expr(right);
+
+                if right.is_error() {
+                    return right;
+                }
+
+                self.eval_prefix_expr(operator, right)
+            }
+            Expression::Infix { ref left, ref right, ref operator, .. } => {
+                let left = self.eval_expr(left);
+
+                if left.is_error() {
+                    return left;
+                }
+
+                let right = self.eval_expr(right);
+
+                if right.is_error() {
+                    return right;
+                }
+
+                self.eval_infix_expr(operator, left, right)
+            }
+            Expression::If { ref condition, ref consequence, ref alternative, .. } => {
+                let cond = self.eval_expr(condition);
+
+                if cond.is_error() {
+                    return cond;
+                }
+
+                if cond.is_truthy() {
+                    self.eval_statement(consequence)
+                } else if let Some(ref alt) = *alternative {
+                    self.eval_statement(alt)
+                } else {
+                    NULL
+                }
+            }
+            _ => NULL,
         }
-        (_, l, r) => Object::Error(format!("Unknown operator: {} {} {}", l, op, r)),
+    }
+
+    fn eval_prefix_expr(&self, op: &str, right: Object) -> Object {
+        match op {
+            "!" => self.eval_bang_operator_expr(right),
+            "-" => self.eval_minus_prefix_operator_expr(right),
+            _ => Object::Error(format!("Unknown operator: {}{}", op, right)),
+        }
+    }
+
+    fn eval_bang_operator_expr(&self, right: Object) -> Object {
+        match right {
+            TRUE => FALSE,
+            FALSE => TRUE,
+            NULL => TRUE,
+            _ => FALSE,
+        }
+    }
+
+    fn eval_minus_prefix_operator_expr(&self, right: Object) -> Object {
+        match right {
+            Object::Integer(val) => Object::Integer(-val),
+            r @ _ => Object::Error(format!("Unknown operator: -{}", r)),
+        }
+    }
+
+    fn eval_infix_expr(&self, op: &str, left: Object, right: Object) -> Object {
+        match (op, left, right) {
+            (_, Object::Integer(lval), Object::Integer(rval)) => {
+                match op {
+                    "+" => Object::Integer(lval + rval),
+                    "-" => Object::Integer(lval - rval),
+                    "*" => Object::Integer(lval * rval),
+                    "/" => Object::Integer(lval / rval),
+                    "<" => to_boolean_object(lval < rval),
+                    ">" => to_boolean_object(lval > rval),
+                    "==" => to_boolean_object(lval == rval),
+                    "!=" => to_boolean_object(lval != rval),
+                    _ => {
+                        Object::Error(format!("Unknown operator: {} {} {}",
+                                              Object::Integer(lval),
+                                              op,
+                                              Object::Integer(rval)))
+                    }
+                }
+            }
+            ("==", lval, rval) => to_boolean_object(lval == rval),
+            ("!=", lval, rval) => to_boolean_object(lval != rval),
+            (_, l @ Object::Integer(..), r @ Object::Boolean(..)) |
+            (_, l @ Object::Boolean(..), r @ Object::Integer(..)) => {
+                Object::Error(format!("Type mismatch: {} {} {}", l, op, r))
+            }
+            (_, l, r) => Object::Error(format!("Unknown operator: {} {} {}", l, op, r)),
+        }
     }
 }
 
@@ -199,8 +203,9 @@ fn test_eval(input: &str) -> Object {
     let mut l = Lexer::new(input.to_string());
     let mut p = Parser::new(&mut l);
     let program = p.parse_program();
+    let eval = Eval::new(program, Env::new());
 
-    eval(program)
+    eval.eval()
 }
 
 #[cfg(test)]
