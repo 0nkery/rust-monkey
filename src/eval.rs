@@ -69,20 +69,22 @@ fn eval_minus_prefix_operator_expr(right: Object) -> Object {
 }
 
 fn eval_infix_expr(op: &str, left: Object, right: Object) -> Object {
-    match (left, right) {
-        (Object::Integer(left_val), Object::Integer(right_val)) => {
+    match (op, left, right) {
+        (_, Object::Integer(lval), Object::Integer(rval)) => {
             match op {
-                "+" => Object::Integer(left_val + right_val),
-                "-" => Object::Integer(left_val - right_val),
-                "*" => Object::Integer(left_val * right_val),
-                "/" => Object::Integer(left_val / right_val),
-                "<" => to_boolean_object(left_val < right_val),
-                ">" => to_boolean_object(left_val > right_val),
-                "==" => to_boolean_object(left_val == right_val),
-                "!=" => to_boolean_object(left_val != right_val),
+                "+" => Object::Integer(lval + rval),
+                "-" => Object::Integer(lval - rval),
+                "*" => Object::Integer(lval * rval),
+                "/" => Object::Integer(lval / rval),
+                "<" => to_boolean_object(lval < rval),
+                ">" => to_boolean_object(lval > rval),
+                "==" => to_boolean_object(lval == rval),
+                "!=" => to_boolean_object(lval != rval),
                 _ => NULL
             }
-        }
+        },
+        ("==", lval @ _, rval @ _) => to_boolean_object(lval == rval),
+        ("!=", lval @ _, rval @ _) => to_boolean_object(lval != rval),
         _ => NULL
     }
 }
@@ -168,6 +170,15 @@ fn test_eval_boolean_expression() {
         ("1 != 1", false),
         ("1 == 2", false),
         ("1 != 2", true),
+        ("true == true", true),
+        ("false == false", true),
+        ("true == false", false),
+        ("true != false", true),
+        ("false!= true", true),
+        ("(1 < 2) == true", true),
+        ("(1 < 2) == false", false),
+        ("(1 > 2) == true", false),
+        ("(1 > 2) == false", true),
     ];
 
     for (input, expected) in tests {
