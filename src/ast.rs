@@ -199,6 +199,10 @@ impl<'a> Node<'a> for Program {
 }
 
 
+#[cfg(test)]
+use super::token::TokenType;
+
+
 #[test]
 fn test_string() {
     let program = Program {

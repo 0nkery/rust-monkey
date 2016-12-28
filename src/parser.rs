@@ -503,6 +503,10 @@ fn check_parser_errors<'a>(parser: &'a Parser) {
     panic!("There are parser errors!");
 }
 
+
+#[cfg(test)]
+use super::ast::Node;
+
 #[cfg(test)]
 fn check_integer_literal(il: &Expression, test_value: i64) {
     match *il {
