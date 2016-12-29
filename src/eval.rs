@@ -137,6 +137,13 @@ impl Eval {
                 }
             }
             Expression::Identifier { ref value, .. } => self.env.get(value),
+            Expression::FunctionLiteral { ref parameters, ref body, .. } => {
+                Object::Function {
+                    parameters: parameters.clone(),
+                    body: *body.clone(),
+                    env: self.env.clone(),
+                }
+            }
             _ => NULL,
         }
     }
@@ -201,6 +208,8 @@ impl Eval {
 use super::lexer::Lexer;
 #[cfg(test)]
 use super::parser::Parser;
+#[cfg(test)]
+use super::ast::Node;
 
 #[cfg(test)]
 fn test_eval(input: &str) -> Object {
@@ -395,5 +404,25 @@ fn test_let_statements() {
 
     for (input, expected) in tests {
         check_integer_object(test_eval(input), expected);
+    }
+}
+
+#[test]
+fn test_function_object() {
+    let input = "fn(x) { x + 2; };";
+
+    let evaluated = test_eval(input);
+
+    if let Object::Function { parameters, body, .. } = evaluated {
+        assert!(parameters.len() == 1, "Function has wrong parameters - {:?}", parameters);
+        assert!(parameters[0].string() == "x", "parameter is not 'x'. Got {:?}", parameters[0]);
+
+        let expected_body = "(x + 2)";
+        assert!(body.string() == expected_body,
+                "Body is not {}. Got {}",
+                expected_body,
+                body.string());
+    } else {
+        panic!("Object is not a Function. Got {:?}", evaluated);
     }
 }
