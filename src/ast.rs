@@ -75,6 +75,10 @@ pub enum Expression {
         token: Token,
         value: i64,
     },
+    String {
+        token: Token,
+        value: String,
+    },
     Prefix {
         token: Token,
         operator: String,
@@ -113,6 +117,7 @@ impl<'a> Node<'a> for Expression {
         match *self {
             Expression::Identifier { ref token, .. } => &token.literal,
             Expression::IntegerLiteral { ref token, .. } => &token.literal,
+            Expression::String { ref token, .. } => &token.literal,
             Expression::Prefix { ref token, .. } => &token.literal,
             Expression::Infix { ref token, .. } => &token.literal,
             Expression::Boolean { ref token, .. } => &token.literal,
@@ -125,6 +130,7 @@ impl<'a> Node<'a> for Expression {
         match *self {
             Expression::Identifier { ref value, .. } => value.clone(),
             Expression::IntegerLiteral { ref token, .. } => token.literal.to_string(),
+            Expression::String { ref token, .. } => token.literal.to_string(),
             Expression::Prefix { ref operator, ref right, .. } => {
                 format!("({}{})", operator, right.string())
             }

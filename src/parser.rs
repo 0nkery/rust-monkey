@@ -159,6 +159,7 @@ impl<'a> Parser<'a> {
         match self.cur_token.token_type {
             TokenType::Ident => self.parse_identifier(),
             TokenType::Int => self.parse_integer_literal(),
+            TokenType::String => self.parse_string(),
             TokenType::Bang | TokenType::Minus => self.parse_prefix_expr(),
             TokenType::True | TokenType::False => self.parse_boolean(),
             TokenType::LeftParen => self.parse_grouped_expr(),
@@ -198,6 +199,13 @@ impl<'a> Parser<'a> {
                 None
             }
         }
+    }
+
+    fn parse_string(&self) -> Option<Expression> {
+        Some(Expression::String {
+            token: self.cur_token.clone(),
+            value: self.cur_token.literal.clone(),
+        })
     }
 
     fn parse_boolean(&self) -> Option<Expression> {
@@ -909,5 +917,25 @@ fn test_call_expression_parsing() {
     } else {
         panic!("program.statements[0] is not Statement::Expression. Got {:?}",
                program.statements[0]);
+    }
+}
+
+#[test]
+fn test_string_literal_expression() {
+    let input = "\"hello world\";";
+
+    let mut l = Lexer::new(input.to_string());
+    let mut p = Parser::new(&mut l);
+    let program = p.parse_program();
+    check_parser_errors(&p);
+
+    if let Statement::Expression { ref expression, .. } = program.statements[0] {
+        if let Expression::String { ref value, .. } = *expression {
+            assert!(value == "hello world", "value is not 'hello world'. Got {}", value);
+        } else {
+            panic!("Expression is not String. Got {:?}", expression);
+        }
+    } else {
+        panic!("stmt is not Statement::Expression. Got {:?}", program.statements[0]);
     }
 }

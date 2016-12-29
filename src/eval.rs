@@ -97,6 +97,7 @@ impl Eval {
         match *expr {
             Expression::IntegerLiteral { value, .. } => Object::Integer(value),
             Expression::Boolean { value, .. } => to_boolean_object(value),
+            Expression::String { ref value, .. } => Object::String(value.clone()),
             Expression::Prefix { ref operator, ref right, .. } => {
                 let right = self.eval_expr(right);
 
@@ -502,4 +503,17 @@ fn test_closures() {
                  addTwo(2);";
 
     check_integer_object(test_eval(input), 4);
+}
+
+#[test]
+fn test_string() {
+    let input = "\"Hello World!\"";
+
+    let evaluated = test_eval(input);
+
+    if let Object::String(ref val) = evaluated {
+        assert!(val == "Hello World!", "String has wrong value. Got {}", val);
+    } else {
+        panic!("Object is not String. Got {:?}", evaluated);
+    }
 }

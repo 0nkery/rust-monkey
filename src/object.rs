@@ -9,6 +9,7 @@ use super::ast::Node;
 pub enum Object {
     Integer(i64),
     Boolean(bool),
+    String(String),
     Null,
     ReturnValue(Box<Object>),
     Error(String),
@@ -24,6 +25,7 @@ impl Object {
         match *self {
             Object::Integer(val) => format!("{}", val),
             Object::Boolean(val) => format!("{}", val),
+            Object::String(ref val) => format!("{}", val),
             Object::Null => "null".to_string(),
             Object::ReturnValue(ref obj) => obj.inspect(),
             Object::Error(ref msg) => format!("ERROR: {}", msg),
