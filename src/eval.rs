@@ -144,8 +144,35 @@ impl Eval {
                     env: self.env.clone(),
                 }
             }
-            _ => NULL,
+            Expression::Call { ref function, ref arguments, .. } => {
+                let func = self.eval_expr(function);
+                if func.is_error() {
+                    return func;
+                }
+
+                let mut args = self.eval_expressions(arguments);
+                let fail = args.len() == 1 && args[0].is_error();
+                if fail {
+                    return args.remove(0);
+                }
+                self.apply_function(func, args)
+            }
         }
+    }
+
+    fn eval_expressions(&mut self, expressions: &[Expression]) -> Vec<Object> {
+        let mut result = Vec::new();
+
+        for expr in expressions {
+            let evaluated = self.eval_expr(expr);
+            if evaluated.is_error() {
+                return vec![evaluated];
+            } else {
+                result.push(evaluated);
+            }
+        }
+
+        result
     }
 
     fn eval_prefix_expr(&self, op: &str, right: Object) -> Object {
@@ -199,6 +226,30 @@ impl Eval {
                 Object::Error(format!("Type mismatch: {} {} {}", l, op, r))
             }
             (_, l, r) => Object::Error(format!("Unknown operator: {} {} {}", l, op, r)),
+        }
+    }
+
+    fn apply_function(&self, mut f: Object, args: Vec<Object>) -> Object {
+        if let Object::Function { ref mut env, ref parameters, ref body, .. } = f {
+            for (param, arg) in parameters.iter().zip(args) {
+                if let Expression::Identifier { ref value, .. } = *param {
+                    env.set(value, arg);
+                } else {
+                    return Object::Error("Function param is not Identifier.".to_string());
+                }
+            }
+
+            let mut eval = Eval::new(env.clone());
+            let evaluated = eval.eval_statement(body);
+
+            if let Object::ReturnValue(obj) = evaluated {
+                return *obj;
+            } else {
+                return evaluated;
+            }
+
+        } else {
+            Object::Error(format!("Not a function: {}", f))
         }
     }
 }
@@ -424,5 +475,19 @@ fn test_function_object() {
                 body.string());
     } else {
         panic!("Object is not a Function. Got {:?}", evaluated);
+    }
+}
+
+#[test]
+fn test_function_application() {
+    let tests = vec![("let identity = fn(x) { x; }; identity(5);", 5),
+                     ("let identity = fn(x) { return x; }; identity(5);", 5),
+                     ("let double = fn(x) { x * 2; }; double(5);", 10),
+                     ("let add = fn(x, y) { x + y; }; add(5, 5);", 10),
+                     ("let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));", 20),
+                     ("fn (x) { x; }(5)", 5)];
+
+    for (input, expected) in tests {
+        check_integer_object(test_eval(input), expected);
     }
 }
