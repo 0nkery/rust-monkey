@@ -222,6 +222,10 @@ impl Eval {
             }
             ("==", Object::Boolean(lval), Object::Boolean(rval)) => to_boolean_object(lval == rval),
             ("!=", Object::Boolean(lval), Object::Boolean(rval)) => to_boolean_object(lval != rval),
+            ("+", Object::String(ref lval), Object::String(ref rval)) => {
+                Object::String(format!("{}{}", lval, rval))
+            }
+
             (_, l @ Object::Integer(..), r @ Object::Boolean(..)) |
             (_, l @ Object::Boolean(..), r @ Object::Integer(..)) => {
                 Object::Error(format!("Type mismatch: {} {} {}", l, op, r))
@@ -432,7 +436,8 @@ fn test_error_handling() {
                 return 1;
             }",
                       "Unknown operator: Boolean + Boolean"),
-                     ("foobar", "Identifier not found: foobar")];
+                     ("foobar", "Identifier not found: foobar"),
+                     ("\"Hello\" - \"World\"", "Unknown operator: String - String")];
 
     for (input, expected) in tests {
         let evaluated = test_eval(input);
@@ -515,5 +520,17 @@ fn test_string() {
         assert!(val == "Hello World!", "String has wrong value. Got {}", val);
     } else {
         panic!("Object is not String. Got {:?}", evaluated);
+    }
+}
+
+#[test]
+fn test_string_concatenation() {
+    let input = "\"Hello\" + \" \" + \"World!\"";
+
+    let evaluated = test_eval(input);
+    if let Object::String(ref val) = evaluated {
+        assert!(val == "Hello World!", "String has wrong value. Got {}", val);
+    } else {
+        panic!("Object is not a String. Got {:?}", evaluated);
     }
 }

@@ -69,6 +69,7 @@ impl fmt::Display for Object {
         match *self {
             Object::Integer(..) => write!(f, "Integer"),
             Object::Boolean(..) => write!(f, "Boolean"),
+            Object::String(..) => write!(f, "String"),
             _ => write!(f, ""),
         }
     }
