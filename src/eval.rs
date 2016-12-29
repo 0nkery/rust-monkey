@@ -151,9 +151,9 @@ impl Eval {
 
     fn eval_bang_operator_expr(&self, right: Object) -> Object {
         match right {
-            TRUE => FALSE,
-            FALSE => TRUE,
-            NULL => TRUE,
+            Object::Boolean(true) => FALSE,
+            Object::Boolean(false) => TRUE,
+            Object::Null => TRUE,
             _ => FALSE,
         }
     }
@@ -185,8 +185,8 @@ impl Eval {
                     }
                 }
             }
-            ("==", lval, rval) => to_boolean_object(lval == rval),
-            ("!=", lval, rval) => to_boolean_object(lval != rval),
+            ("==", Object::Boolean(lval), Object::Boolean(rval)) => to_boolean_object(lval == rval),
+            ("!=", Object::Boolean(lval), Object::Boolean(rval)) => to_boolean_object(lval != rval),
             (_, l @ Object::Integer(..), r @ Object::Boolean(..)) |
             (_, l @ Object::Boolean(..), r @ Object::Integer(..)) => {
                 Object::Error(format!("Type mismatch: {} {} {}", l, op, r))
@@ -234,7 +234,7 @@ fn check_boolean_object(obj: Object, expected: bool) {
 
 #[cfg(test)]
 fn check_null_object(obj: Object) {
-    assert!(obj == NULL, "obj is not NULL. Got {:?}", obj);
+    assert!(obj.is_null(), "obj is not NULL. Got {:?}", obj);
 }
 
 
@@ -327,7 +327,7 @@ fn test_if_else_expressions() {
         let evaluated = test_eval(input);
         match expected {
             Object::Integer(val) => check_integer_object(evaluated, val),
-            NULL => check_null_object(evaluated),
+            Object::Null => check_null_object(evaluated),
             _ => panic!("Fix the test."),
         }
     }

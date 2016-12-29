@@ -1,13 +1,22 @@
 use std::fmt;
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+use super::ast::Expression;
+use super::ast::Statement;
+use super::ast::Node;
+
+#[derive(Debug, Clone)]
 pub enum Object {
     Integer(i64),
     Boolean(bool),
     Null,
     ReturnValue(Box<Object>),
     Error(String),
+    Function {
+        parameters: Vec<Expression>,
+        body: Statement,
+        env: Env,
+    },
 }
 
 impl Object {
@@ -18,13 +27,22 @@ impl Object {
             Object::Null => "null".to_string(),
             Object::ReturnValue(ref obj) => obj.inspect(),
             Object::Error(ref msg) => format!("ERROR: {}", msg),
+            Object::Function { ref parameters, ref body, .. } => {
+                let mut params = Vec::new();
+                for p in parameters {
+                    params.push(p.string());
+                }
+
+                format!("fn({}){{\n{}\n}}", params.join(", "), body.string())
+            }
         }
     }
 
     pub fn is_truthy(&self) -> bool {
         match *self {
-            TRUE => true,
-            NULL | FALSE => false,
+            Object::Boolean(true) => true,
+            Object::Boolean(false) => false,
+            ref o if o.is_null() => false,
             _ => true,
         }
     }
@@ -32,6 +50,13 @@ impl Object {
     pub fn is_error(&self) -> bool {
         match *self {
             Object::Error(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_null(&self) -> bool {
+        match *self {
+            Object::Null => true,
             _ => false,
         }
     }
@@ -52,6 +77,7 @@ pub const FALSE: Object = Object::Boolean(false);
 pub const NULL: Object = Object::Null;
 
 
+#[derive(Debug, Clone)]
 pub struct Env {
     store: HashMap<String, Object>,
 }
