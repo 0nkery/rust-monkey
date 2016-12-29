@@ -136,6 +136,7 @@ impl Eval {
                     NULL
                 }
             }
+            Expression::Identifier { ref value, .. } => self.env.get(value),
             _ => NULL,
         }
     }

@@ -1,7 +1,7 @@
 use std::fmt;
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Object {
     Integer(i64),
     Boolean(bool),
@@ -61,8 +61,11 @@ impl Env {
         Env { store: HashMap::new() }
     }
 
-    pub fn get<'a>(&'a self, name: &str) -> Result<&'a Object, String> {
-        Ok(&self.store[name])
+    pub fn get<'a>(&'a self, name: &str) -> Object {
+        match self.store.get(name) {
+            Some(obj) => obj.clone(),
+            None => Object::Error(format!("Identifier not found: {}", name)),
+        }
     }
 
     pub fn set(&mut self, name: &str, val: Object) {
