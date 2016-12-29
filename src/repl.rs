@@ -29,8 +29,8 @@ pub fn start(in_: Stdin, mut out: Stdout) {
             continue;
         }
 
-        let eval = Eval::new(program, env);
-        let evaluated = eval.eval();
+        let mut eval = Eval::new(env);
+        let evaluated = eval.eval(program);
         env = eval.env();
 
         write!(&mut out, "{}\n", evaluated.inspect()).expect("Failed to write to stdout");

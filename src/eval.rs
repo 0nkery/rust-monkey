@@ -19,30 +19,26 @@ fn to_boolean_object(val: bool) -> Object {
 
 pub struct Eval {
     env: Env,
-    program: Program,
 }
 
 impl Eval {
-    pub fn new(program: Program, env: Env) -> Self {
-        Eval {
-            env: env,
-            program: program,
-        }
+    pub fn new(env: Env) -> Self {
+        Eval { env: env }
     }
 
     pub fn env(self) -> Env {
         self.env
     }
 
-    pub fn eval(&self) -> Object {
-        self.eval_statements(&self.program.statements, false)
+    pub fn eval(&mut self, program: Program) -> Object {
+        self.eval_statements(&program.statements, false)
     }
 
-    fn eval_statements(&self, stmts: &Vec<Statement>, nested: bool) -> Object {
+    fn eval_statements(&mut self, stmts: &Vec<Statement>, nested: bool) -> Object {
         let mut result = NULL;
 
         for stmt in stmts {
-            let result = self.eval_statement(&stmt);
+            result = self.eval_statement(&stmt);
 
             match result {
                 Object::ReturnValue(val) => {
@@ -64,7 +60,7 @@ impl Eval {
         result
     }
 
-    fn eval_statement(&self, stmt: &Statement) -> Object {
+    fn eval_statement(&mut self, stmt: &Statement) -> Object {
         match *stmt {
             Statement::Expression { ref expression, .. } => self.eval_expr(expression),
             Statement::Block { ref statements, .. } => self.eval_statements(statements, true),
@@ -87,7 +83,7 @@ impl Eval {
                 }
                 if let Expression::Identifier { ref value, .. } = *name {
                     self.env.set(value, val);
-                    return val;
+                    return NULL;
                 } else {
                     return Object::Error("Internal interpreter error. Not an \
                                           Expression::Identifier in Statement::Let::expression."
@@ -97,7 +93,7 @@ impl Eval {
         }
     }
 
-    fn eval_expr(&self, expr: &Expression) -> Object {
+    fn eval_expr(&mut self, expr: &Expression) -> Object {
         match *expr {
             Expression::IntegerLiteral { value, .. } => Object::Integer(value),
             Expression::Boolean { value, .. } => to_boolean_object(value),
@@ -210,9 +206,9 @@ fn test_eval(input: &str) -> Object {
     let mut l = Lexer::new(input.to_string());
     let mut p = Parser::new(&mut l);
     let program = p.parse_program();
-    let eval = Eval::new(program, Env::new());
+    let mut eval = Eval::new(Env::new());
 
-    eval.eval()
+    eval.eval(program)
 }
 
 #[cfg(test)]

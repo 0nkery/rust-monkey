@@ -61,11 +61,11 @@ impl Env {
         Env { store: HashMap::new() }
     }
 
-    pub fn get(&self, name: &str) -> Result<Object, String> {
-        Ok(self.store[name])
+    pub fn get<'a>(&'a self, name: &str) -> Result<&'a Object, String> {
+        Ok(&self.store[name])
     }
 
     pub fn set(&mut self, name: &str, val: Object) {
-        self.store[name] = val;
+        self.store.insert(name.to_string(), val);
     }
 }
