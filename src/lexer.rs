@@ -66,6 +66,18 @@ impl Lexer {
         self.input[position..self.position].to_string()
     }
 
+    fn read_string(&mut self) -> String {
+        let position = self.position + 1;
+        loop {
+            self.read_char();
+            if self.ch == '"' {
+                break;
+            }
+        }
+
+        self.input[position..self.position].to_string()
+    }
+
     pub fn next_token(&mut self) -> Token {
         while self.ch.is_whitespace() {
             self.read_char();
@@ -110,6 +122,7 @@ impl Lexer {
                 let literal = self.read_number();
                 return Token::new(TokenType::Int, literal);
             }
+            '"' => Token::new(TokenType::String, self.read_string()),
             _ => Token::new(TokenType::Illegal, self.ch.to_string()),
         };
 
@@ -138,6 +151,8 @@ fn test_next_token() {
 
         10 == 10;
         10 != 9;
+        \"foobar\"
+        \"foo bar\"
     ");
     let mut lexer = Lexer::new(input);
 
@@ -214,6 +229,8 @@ fn test_next_token() {
                      (TokenType::NotEq, "!="),
                      (TokenType::Int, "9"),
                      (TokenType::Semicolon, ";"),
+                     (TokenType::String, "foobar"),
+                     (TokenType::String, "foo bar"),
                      (TokenType::EOF, "")];
 
     for (i, &(ref expected_type, ref expected_literal)) in tests.iter().enumerate() {
