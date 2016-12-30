@@ -5,6 +5,8 @@ use super::ast::Expression;
 use super::ast::Statement;
 use super::ast::Node;
 
+type BuiltinFunction = Fn(&[Object]) -> Object;
+
 #[derive(Debug, Clone)]
 pub enum Object {
     Integer(i64),
@@ -18,6 +20,7 @@ pub enum Object {
         body: Statement,
         env: Env,
     },
+    Builtin(Box<BuiltinFunction>),
 }
 
 impl Object {
@@ -36,7 +39,8 @@ impl Object {
                 }
 
                 format!("fn({}){{\n{}\n}}", params.join(", "), body.string())
-            }
+            },
+            Object::Builtin(..) => "builtin function".to_string(),
         }
     }
 

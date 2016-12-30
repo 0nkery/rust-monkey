@@ -534,3 +534,33 @@ fn test_string_concatenation() {
         panic!("Object is not a String. Got {:?}", evaluated);
     }
 }
+
+#[test]
+fn test_builtin_functions() {
+    let tests = vec![
+        ("len(\"\")", Object::Integer(0)),
+        ("len(\"four\")", Object::Integer(4)),
+        ("len(\"hello world\")", Object::Integer(11)),
+        ("len(1)", Object::Error("Argument to 'len' not supported. Got Integer".to_string())),
+        ("len(\"one\", \"two\")", Object::Error("Wrong number of arguments. Got 2, want 1".to_string())),
+    ];
+
+    for (input, expected) in tests {
+        let evaluated = test_eval(input);
+
+        match expected {
+            Object::Integer(val) => check_integer_object(evaluated, val),
+            Object::Error(expected) => {
+                if let Object::Error(msg) = evaluated {
+                    assert!(msg == expected,
+                            "Wrong error message. Expected\n{}\nGot\n{}",
+                            expected,
+                            evaluated);
+                } else {
+                    panic!("Object is not an Error. Got {:?}", evaluated);
+                }
+            }
+            _ => panic!("Fix the tests.")
+        }
+    }
+}
