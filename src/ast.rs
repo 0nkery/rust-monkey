@@ -119,6 +119,10 @@ pub enum Expression {
         left: Box<Expression>,
         index: Box<Expression>,
     },
+    Hash {
+        token: Token,
+        pairs: Vec<(Expression, Expression)>,
+    },
 }
 
 impl<'a> Node<'a> for Expression {
@@ -135,6 +139,7 @@ impl<'a> Node<'a> for Expression {
             Expression::Call { ref token, .. } => &token.literal,
             Expression::Array { ref token, .. } => &token.literal,
             Expression::Index { ref token, .. } => &token.literal,
+            Expression::Hash { ref token, .. } => &token.literal,
         }
     }
     fn string(&self) -> String {
@@ -180,6 +185,13 @@ impl<'a> Node<'a> for Expression {
             }
             Expression::Index { ref left, ref index, .. } => {
                 format!("({}[{}])", left.string(), index.string())
+            }
+            Expression::Hash { ref pairs, .. } => {
+                format!("{{{}}}",
+                        pairs.iter()
+                            .map(|&(ref key, ref value)| format!("{:?}: {:?}", key, value))
+                            .collect::<Vec<_>>()
+                            .join(", "))
             }
         }
     }

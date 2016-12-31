@@ -167,6 +167,7 @@ impl<'a> Parser<'a> {
             TokenType::If => self.parse_if_expr(),
             TokenType::Function => self.parse_function_literal(),
             TokenType::LeftBracket => self.parse_array(),
+            TokenType::LeftBrace => self.parse_hash_literal(),
             ref tt @ _ => {
                 let err_msg = format!("No prefix parse fn for {:?} found.", tt);
                 self.errors.push(err_msg);
@@ -222,6 +223,44 @@ impl<'a> Parser<'a> {
         } else {
             None
         }
+    }
+
+    fn parse_hash_literal(&mut self) -> Option<Expression> {
+        let token = self.cur_token.clone();
+        let mut pairs = Vec::new();
+
+        while self.peek_token.token_type != TokenType::RightBrace &&
+              self.peek_token.token_type != TokenType::EOF {
+            self.next_token();
+
+            let key = self.parse_expr(Precedence::Lowest);
+            if !self.expect_peek(TokenType::Colon) || key.is_none() {
+                return None;
+            }
+
+            self.next_token();
+
+            let value = self.parse_expr(Precedence::Lowest);
+            if value.is_none() {
+                return None;
+            }
+
+            pairs.push((key.unwrap(), value.unwrap()));
+
+            if self.peek_token.token_type != TokenType::RightBrace &&
+               !self.expect_peek(TokenType::Comma) {
+                return None;
+            }
+        }
+
+        if !self.expect_peek(TokenType::RightBrace) {
+            return None;
+        }
+
+        Some(Expression::Hash {
+            token: token,
+            pairs: pairs,
+        })
     }
 
     fn parse_boolean(&self) -> Option<Expression> {

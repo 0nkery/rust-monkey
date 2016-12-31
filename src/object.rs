@@ -1,5 +1,8 @@
 use std::fmt;
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
 
 use super::ast::Expression;
 use super::ast::Statement;
@@ -20,6 +23,9 @@ impl fmt::Debug for BuiltinFn {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct HashKey(u64);
+
 #[derive(Debug, Clone)]
 pub enum Object {
     Integer(i64),
@@ -35,6 +41,7 @@ pub enum Object {
     },
     Builtin(BuiltinFn),
     Array(Vec<Object>),
+    Hash(HashMap<HashKey, (Object, Object)>),
 }
 
 impl Object {
@@ -58,6 +65,15 @@ impl Object {
             Object::Array(ref elems) => {
                 format!("[{}]", elems.iter().map(|el| el.inspect()).collect::<Vec<_>>().join(", "))
             }
+            Object::Hash(ref map) => {
+                format!("{{{}}}",
+                        map.values()
+                            .map(|&(ref key, ref value)| {
+                                format!("{}: {}", key.inspect(), value.inspect())
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", "))
+            }
         }
     }
 
@@ -80,6 +96,34 @@ impl Object {
     pub fn is_null(&self) -> bool {
         match *self {
             Object::Null => true,
+            _ => false,
+        }
+    }
+
+    pub fn hash_key(&self) -> HashKey {
+        match *self {
+            Object::Integer(val) => HashKey(val as u64),
+            Object::Boolean(val) => {
+                HashKey(if val {
+                    1
+                } else {
+                    0
+                })
+            }
+            Object::String(ref val) => {
+                let mut hasher = DefaultHasher::new();
+                val.hash(&mut hasher);
+                HashKey(hasher.finish())
+            }
+            _ => panic!("Got object not allowed to be hash key: {}", *self),
+        }
+    }
+
+    pub fn is_hashable(&self) -> bool {
+        match *self {
+            Object::Integer(..) |
+            Object::Boolean(..) |
+            Object::String(..) => true,
             _ => false,
         }
     }

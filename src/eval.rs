@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::object::Object;
 use super::object::Env;
 use super::object::NULL;
@@ -200,6 +202,30 @@ impl Eval {
                 }
 
                 self.eval_index_expr(left, index)
+            }
+            Expression::Hash { ref pairs, .. } => {
+                let mut map = HashMap::new();
+
+                for &(ref key_expr, ref value_expr) in pairs {
+                    let key = self.eval_expr(&key_expr);
+                    if key.is_error() {
+                        return key;
+                    }
+
+                    if !key.is_hashable() {
+                        return Object::Error(format!("Unusable as hash key: {}", key));
+                    }
+
+                    let value = self.eval_expr(&value_expr);
+                    if value.is_error() {
+                        return value;
+                    }
+
+                    let hashed = value.hash_key();
+                    map.insert(hashed, (key, value));
+                }
+
+                Object::Hash(map)
             }
         }
     }
