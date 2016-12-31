@@ -165,6 +165,7 @@ impl<'a> Parser<'a> {
             TokenType::LeftParen => self.parse_grouped_expr(),
             TokenType::If => self.parse_if_expr(),
             TokenType::Function => self.parse_function_literal(),
+            TokenType::LeftBracket => self.parse_array(),
             ref tt @ _ => {
                 let err_msg = format!("No prefix parse fn for {:?} found.", tt);
                 self.errors.push(err_msg);
@@ -206,6 +207,20 @@ impl<'a> Parser<'a> {
             token: self.cur_token.clone(),
             value: self.cur_token.literal.clone(),
         })
+    }
+
+    fn parse_array(&self) -> Option<Expression> {
+        let token = self.cur_token.clone();
+        let elements = self.parse_expression_list(TokenType::RightBracket);
+
+        if elements.is_some() {
+            Some(Expression::Array {
+                token: token,
+                elements: elements.unwrap(),
+            })
+        } else {
+            None
+        }
     }
 
     fn parse_boolean(&self) -> Option<Expression> {
@@ -416,7 +431,7 @@ impl<'a> Parser<'a> {
 
     fn parse_call_expr(&mut self, func: Expression) -> Option<Expression> {
         let token = self.cur_token.clone();
-        let args = self.parse_call_args();
+        let args = self.parse_expression_list(TokenType::RightParen);
 
         if args.is_none() {
             return None;
@@ -429,12 +444,12 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_call_args(&mut self) -> Option<Vec<Expression>> {
-        let mut args = Vec::new();
+    fn parse_expression_list(&mut self, end: TokenType) -> Option<Vec<Expression>> {
+        let mut list = Vec::new();
 
-        if self.peek_token.token_type == TokenType::RightParen {
+        if self.peek_token.token_type == end {
             self.next_token();
-            return Some(args);
+            return Some(list);
         }
 
         self.next_token();
@@ -442,7 +457,7 @@ impl<'a> Parser<'a> {
         if expr.is_none() {
             return None;
         }
-        args.push(expr.unwrap());
+        list.push(expr.unwrap());
 
         while self.peek_token.token_type == TokenType::Comma {
             self.next_token();
@@ -452,11 +467,11 @@ impl<'a> Parser<'a> {
             if expr.is_none() {
                 return None;
             }
-            args.push(expr.unwrap());
+            list.push(expr.unwrap());
         }
 
-        if self.expect_peek(TokenType::RightParen) {
-            Some(args)
+        if self.expect_peek(end) {
+            Some(list)
         } else {
             None
         }
@@ -937,5 +952,31 @@ fn test_string_literal_expression() {
         }
     } else {
         panic!("stmt is not Statement::Expression. Got {:?}", program.statements[0]);
+    }
+}
+
+#[test]
+fn test_parsing_array_literals() {
+    let input = "[1, 2 * 2, 3 + 3]";
+
+    let mut l = Lexer::new(input.to_string());
+    let mut p = Parser::new(&mut l);
+    let program = p.parse_program();
+    check_parser_errors(&p);
+
+    if let Statement::Expression { ref expression, .. } = program.statements[0] {
+        if let Expression::Array { ref elements, .. } = *expression {
+            assert!(elements.len() == 3,
+                    "elements count is not equal to 3. Got {}",
+                    elements.len());
+
+            check_integer_literal(&elements[0], 1);
+            check_infix_expression(&elements[1], "2", "*", "2");
+            check_infix_expression(&elements[2], "3", "+", "3");
+        } else {
+            panic!("expression is not Array. Got {:?}", expression);
+        }
+    } else {
+        panic!("program.statements[0] is not Statement::Expression");
     }
 }

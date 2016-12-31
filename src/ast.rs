@@ -110,6 +110,10 @@ pub enum Expression {
         function: Box<Expression>,
         arguments: Vec<Expression>,
     },
+    Array {
+        token: Token,
+        elements: Vec<Expression>,
+    },
 }
 
 impl<'a> Node<'a> for Expression {
@@ -124,6 +128,7 @@ impl<'a> Node<'a> for Expression {
             Expression::If { ref token, .. } => &token.literal,
             Expression::FunctionLiteral { ref token, .. } => &token.literal,
             Expression::Call { ref token, .. } => &token.literal,
+            Expression::Array { ref token, .. } => &token.literal,
         }
     }
     fn string(&self) -> String {
@@ -162,6 +167,10 @@ impl<'a> Node<'a> for Expression {
                 }
 
                 format!("{}({})", function.string(), args.join(", "))
+            }
+            Expression::Array { ref elements, .. } => {
+                format!("[{}]",
+                        elements.iter().map(|el| el.string()).collect::<Vec<_>>().join(", "))
             }
         }
     }
