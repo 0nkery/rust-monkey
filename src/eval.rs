@@ -222,6 +222,7 @@ impl Eval {
                     }
 
                     let hashed = value.hash_key();
+                    println!("{}", hashed);
                     map.insert(hashed, (key, value));
                 }
 
@@ -331,6 +332,15 @@ impl Eval {
     fn eval_index_expr(&self, left: Object, index: Object) -> Object {
         match (left, index) {
             (Object::Array(elems), Object::Integer(idx)) => self.eval_array_index_expr(elems, idx),
+            (Object::Hash(ref map), ref obj) if obj.is_hashable() => {
+                let pair = map.get(&obj.hash_key());
+                if let Some(&(_, ref value)) = pair {
+                    value.clone()
+                } else {
+                    NULL
+                }
+            }
+            (Object::Hash(..), obj) => Object::Error(format!("Unusable as hash key: {}", obj)),
             (left, _) => Object::Error(format!("Index operator is not supported: {}", left)),
         }
     }
