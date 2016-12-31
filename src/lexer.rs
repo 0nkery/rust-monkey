@@ -99,6 +99,8 @@ impl Lexer {
             '+' => Token::new(TokenType::Plus, self.ch.to_string()),
             '{' => Token::new(TokenType::LeftBrace, self.ch.to_string()),
             '}' => Token::new(TokenType::RightBrace, self.ch.to_string()),
+            '[' => Token::new(TokenType::LeftBracket, self.ch.to_string()),
+            ']' => Token::new(TokenType::RightBracket, self.ch.to_string()),
             '!' => {
                 if self.peek_char() == '=' {
                     self.read_char();
@@ -153,6 +155,7 @@ fn test_next_token() {
         10 != 9;
         \"foobar\"
         \"foo bar\"
+        [1, 2];
     ");
     let mut lexer = Lexer::new(input);
 
@@ -231,6 +234,12 @@ fn test_next_token() {
                      (TokenType::Semicolon, ";"),
                      (TokenType::String, "foobar"),
                      (TokenType::String, "foo bar"),
+                     (TokenType::LeftBracket, "["),
+                     (TokenType::Int, "1"),
+                     (TokenType::Comma, ","),
+                     (TokenType::Int, "2"),
+                     (TokenType::RightBracket, "]"),
+                     (TokenType::Semicolon, ";"),
                      (TokenType::EOF, "")];
 
     for (i, &(ref expected_type, ref expected_literal)) in tests.iter().enumerate() {
