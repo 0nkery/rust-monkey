@@ -15,6 +15,7 @@ enum Precedence {
     Product,
     Prefix,
     Call,
+    Index,
 }
 
 
@@ -209,7 +210,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_array(&self) -> Option<Expression> {
+    fn parse_array(&mut self) -> Option<Expression> {
         let token = self.cur_token.clone();
         let elements = self.parse_expression_list(TokenType::RightBracket);
 
@@ -384,6 +385,7 @@ impl<'a> Parser<'a> {
             TokenType::Slash => Precedence::Product,
             TokenType::Asterisk => Precedence::Product,
             TokenType::LeftParen => Precedence::Call,
+            TokenType::LeftBracket => Precedence::Index,
             _ => Precedence::Lowest,
         }
     }
@@ -419,6 +421,7 @@ impl<'a> Parser<'a> {
                 }
             }
             TokenType::LeftParen => self.parse_call_expr(left),
+            TokenType::LeftBracket => self.parse_index_expr(left),
             ref tt @ _ => {
                 let msg = format!("Infix parse func for {:?} not found.", tt);
                 self.errors.push(msg);
@@ -442,6 +445,26 @@ impl<'a> Parser<'a> {
             arguments: args.unwrap(),
             function: Box::new(func),
         })
+    }
+
+    fn parse_index_expr(&mut self, left: Expression) -> Option<Expression> {
+        let token = self.cur_token.clone();
+
+        self.next_token();
+        let index = self.parse_expr(Precedence::Lowest);
+        if index.is_none() {
+            return None;
+        }
+
+        if self.expect_peek(TokenType::RightBracket) {
+            Some(Expression::Index {
+                token: token,
+                left: Box::new(left),
+                index: Box::new(index.unwrap()),
+            })
+        } else {
+            None
+        }
     }
 
     fn parse_expression_list(&mut self, end: TokenType) -> Option<Vec<Expression>> {
@@ -790,7 +813,10 @@ fn test_operator_precedence_parsing() {
                      ("(5 + 5) * 2", "((5 + 5) * 2)"),
                      ("2 / (5 + 5)", "(2 / (5 + 5))"),
                      ("-(5 + 5)", "(-(5 + 5))"),
-                     ("!(true == true)", "(!(true == true))")];
+                     ("!(true == true)", "(!(true == true))"),
+                     ("a * [1, 2, 3, 4][b * c] * d", "((a * ([1, 2, 3, 4][(b * c)])) * d)"),
+                     ("add(a * b[2], b[1], 2 * [1, 2][1])",
+                      "add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))")];
 
     for (input, expected) in tests {
         let mut l = Lexer::new(input.to_string());
@@ -978,5 +1004,24 @@ fn test_parsing_array_literals() {
         }
     } else {
         panic!("program.statements[0] is not Statement::Expression");
+    }
+}
+
+#[test]
+fn test_parsing_index_expressions() {
+    let input = "myArray[1 + 1]";
+
+    let mut l = Lexer::new(input.to_string());
+    let mut p = Parser::new(&mut l);
+    let program = p.parse_program();
+    check_parser_errors(&p);
+
+    if let Statement::Expression { ref expression, .. } = program.statements[0] {
+        if let Expression::Index { ref left, ref index, .. } = *expression {
+            check_identifier(left, "myArray");
+            check_infix_expression(index, "1", "+", "1");
+        } else {
+            panic!("expression is not Expression::Index. Got {:?}", expression);
+        }
     }
 }

@@ -34,6 +34,7 @@ pub enum Object {
         env: Env,
     },
     Builtin(BuiltinFn),
+    Array(Vec<Object>),
 }
 
 impl Object {
@@ -54,6 +55,9 @@ impl Object {
                 format!("fn({}){{\n{}\n}}", params.join(", "), body.string())
             }
             Object::Builtin(..) => "builtin function".to_string(),
+            Object::Array(ref elems) => {
+                format!("[{}]", elems.iter().map(|el| el.inspect()).collect::<Vec<_>>().join(", "))
+            }
         }
     }
 
