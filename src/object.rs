@@ -6,7 +6,7 @@ use super::ast::Statement;
 use super::ast::Node;
 
 
-pub struct BuiltinFn(fn(&[Object]) -> Object);
+pub struct BuiltinFn(pub fn(&[Object]) -> Object);
 
 impl Clone for BuiltinFn {
     fn clone(&self) -> Self {
@@ -87,6 +87,7 @@ impl fmt::Display for Object {
             Object::Integer(..) => write!(f, "Integer"),
             Object::Boolean(..) => write!(f, "Boolean"),
             Object::String(..) => write!(f, "String"),
+            Object::Builtin(..) => write!(f, "Builtin"),
             _ => write!(f, ""),
         }
     }

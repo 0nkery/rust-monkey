@@ -7,6 +7,7 @@ mod ast;
 mod parser;
 mod object;
 mod eval;
+mod builtins;
 
 use std::io::stdin;
 use std::io::stdout;

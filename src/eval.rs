@@ -6,6 +6,8 @@ use super::object::FALSE;
 use super::ast::Program;
 use super::ast::Statement;
 use super::ast::Expression;
+use super::builtins;
+use super::object::BuiltinFn;
 
 
 fn to_boolean_object(val: bool) -> Object {
@@ -19,11 +21,18 @@ fn to_boolean_object(val: bool) -> Object {
 
 pub struct Eval {
     env: Env,
+    builtins: Env,
 }
 
 impl Eval {
     pub fn new(env: Env) -> Self {
-        Eval { env: env }
+        let mut builtins = Env::new();
+        builtins.set("len", builtins::LEN);
+
+        Eval {
+            env: env,
+            builtins: builtins,
+        }
     }
 
     pub fn env(self) -> Env {
@@ -137,7 +146,14 @@ impl Eval {
                     NULL
                 }
             }
-            Expression::Identifier { ref value, .. } => self.env.get(value),
+            Expression::Identifier { ref value, .. } => {
+                let mut val = self.env.get(value);
+                if val.is_error() {
+                    val = self.builtins.get(value);
+                }
+
+                val
+            }
             Expression::FunctionLiteral { ref parameters, ref body, .. } => {
                 Object::Function {
                     parameters: parameters.clone(),
@@ -235,26 +251,27 @@ impl Eval {
     }
 
     fn apply_function(&self, mut f: Object, args: Vec<Object>) -> Object {
-        if let Object::Function { ref mut env, ref parameters, ref body, .. } = f {
-            for (param, arg) in parameters.iter().zip(args) {
-                if let Expression::Identifier { ref value, .. } = *param {
-                    env.set(value, arg);
+        match f {
+            Object::Function { ref mut env, ref parameters, ref body, .. } => {
+                for (param, arg) in parameters.iter().zip(args) {
+                    if let Expression::Identifier { ref value, .. } = *param {
+                        env.set(value, arg);
+                    } else {
+                        return Object::Error("Function param is not Identifier.".to_string());
+                    }
+                }
+
+                let mut eval = Eval::new(env.clone());
+                let evaluated = eval.eval_statement(body);
+
+                if let Object::ReturnValue(obj) = evaluated {
+                    return *obj;
                 } else {
-                    return Object::Error("Function param is not Identifier.".to_string());
+                    return evaluated;
                 }
             }
-
-            let mut eval = Eval::new(env.clone());
-            let evaluated = eval.eval_statement(body);
-
-            if let Object::ReturnValue(obj) = evaluated {
-                return *obj;
-            } else {
-                return evaluated;
-            }
-
-        } else {
-            Object::Error(format!("Not a function: {}", f))
+            Object::Builtin(BuiltinFn(func)) => func(&args),
+            _ => Object::Error(format!("Not a function: {}", f)),
         }
     }
 }
@@ -532,5 +549,35 @@ fn test_string_concatenation() {
         assert!(val == "Hello World!", "String has wrong value. Got {}", val);
     } else {
         panic!("Object is not a String. Got {:?}", evaluated);
+    }
+}
+
+#[test]
+fn test_builtin_functions() {
+    let tests = vec![
+        ("len(\"\")", Object::Integer(0)),
+        ("len(\"four\")", Object::Integer(4)),
+        ("len(\"hello world\")", Object::Integer(11)),
+        ("len(1)", Object::Error("Argument to 'len' is not supported. Got Integer".to_string())),
+        ("len(\"one\", \"two\")", Object::Error("Wrong number of arguments. Got 2, want 1".to_string())),
+    ];
+
+    for (input, expected) in tests {
+        let evaluated = test_eval(input);
+
+        match expected {
+            Object::Integer(val) => check_integer_object(evaluated, val),
+            Object::Error(expected) => {
+                if let Object::Error(msg) = evaluated {
+                    assert!(msg == expected,
+                            "Wrong error message. Expected\n{}\nGot\n{}",
+                            expected,
+                            msg);
+                } else {
+                    panic!("Object is not an Error. Got {:?}", evaluated);
+                }
+            }
+            _ => panic!("Fix the tests."),
+        }
     }
 }
