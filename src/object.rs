@@ -5,6 +5,21 @@ use super::ast::Expression;
 use super::ast::Statement;
 use super::ast::Node;
 
+
+pub struct BuiltinFn(fn(&[Object]) -> Object);
+
+impl Clone for BuiltinFn {
+    fn clone(&self) -> Self {
+        BuiltinFn(self.0)
+    }
+}
+
+impl fmt::Debug for BuiltinFn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "BuiltinFn")
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Object {
     Integer(i64),
@@ -18,6 +33,7 @@ pub enum Object {
         body: Statement,
         env: Env,
     },
+    Builtin(BuiltinFn),
 }
 
 impl Object {
@@ -37,6 +53,7 @@ impl Object {
 
                 format!("fn({}){{\n{}\n}}", params.join(", "), body.string())
             }
+            Object::Builtin(..) => "builtin function".to_string(),
         }
     }
 
