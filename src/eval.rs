@@ -28,6 +28,10 @@ impl Eval {
     pub fn new(env: Env) -> Self {
         let mut builtins = Env::new();
         builtins.set("len", builtins::LEN);
+        builtins.set("first", builtins::FIRST);
+        builtins.set("last", builtins::LAST);
+        builtins.set("rest", builtins::REST);
+        builtins.set("push", builtins::PUSH);
 
         Eval {
             env: env,
@@ -360,7 +364,6 @@ fn check_null_object(obj: Object) {
     assert!(obj.is_null(), "obj is not NULL. Got {:?}", obj);
 }
 
-
 #[test]
 fn test_eval_integer_expression() {
     let tests = vec![
@@ -595,12 +598,20 @@ fn test_string_concatenation() {
 
 #[test]
 fn test_builtin_functions() {
-    let tests = vec![
-        ("len(\"\")", Object::Integer(0)),
-        ("len(\"four\")", Object::Integer(4)),
-        ("len(\"hello world\")", Object::Integer(11)),
-        ("len(1)", Object::Error("Argument to 'len' is not supported. Got Integer".to_string())),
-        ("len(\"one\", \"two\")", Object::Error("Wrong number of arguments. Got 2, want 1".to_string())),
+    let tests = vec![("len(\"\")", Object::Integer(0)),
+                     ("len(\"four\")", Object::Integer(4)),
+                     ("len(\"hello world\")", Object::Integer(11)),
+                     ("len(1)",
+                      Object::Error("Argument to 'len' is not supported. Got Integer".to_string())),
+                     ("len(\"one\", \"two\")",
+                      Object::Error("Wrong number of arguments. Got 2, want 1".to_string())),
+                     ("len([1, 2, 3])", Object::Integer(3)),
+                     ("len([])", Object::Integer(0)),
+                     ("first([1, 2, 3])", Object::Integer(1)),
+                     ("first([])", Object::Null),
+                     ("last([1, 2, 3])", Object::Integer(3)),
+                     ("last([])", Object::Null),
+                     ("rest([])", Object::Null),
     ];
 
     for (input, expected) in tests {
@@ -618,6 +629,7 @@ fn test_builtin_functions() {
                     panic!("Object is not an Error. Got {:?}", evaluated);
                 }
             }
+            Object::Null => check_null_object(evaluated),
             _ => panic!("Fix the tests."),
         }
     }
