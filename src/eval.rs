@@ -221,8 +221,7 @@ impl Eval {
                         return value;
                     }
 
-                    let hashed = value.hash_key();
-                    println!("{}", hashed);
+                    let hashed = key.hash_key();
                     map.insert(hashed, (key, value));
                 }
 
@@ -527,8 +526,7 @@ fn test_error_handling() {
                      ("if (10 > 1) { true + false; }", "Unknown operator: Boolean + Boolean"),
                      ("if (10 > 1) {
                 if (10 > 1) {
-                    return \
-                       true + false;
+                    return true + false;
                 }
                 return 1;
             }",
