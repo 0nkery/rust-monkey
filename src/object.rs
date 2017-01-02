@@ -26,6 +26,7 @@ impl fmt::Debug for BuiltinFn {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HashKey(u64);
 
+
 #[derive(Debug, Clone)]
 pub enum Object {
     Integer(i64),
